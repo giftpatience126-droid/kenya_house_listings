@@ -1,0 +1,311 @@
+.premium-payment-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.premium-payment-shell {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.premium-payment-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.premium-payment-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  text-align: center;
+  padding: 30px 20px;
+}
+
+.premium-payment-header h1 {
+  margin: 0 0 10px 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.premium-payment-header p {
+  margin: 0;
+  font-size: 16px;
+  opacity: 0.9;
+}
+
+.premium-payment-benefits {
+  padding: 30px 20px;
+  display: grid;
+  gap: 20px;
+}
+
+.benefit-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.benefit-icon {
+  font-size: 24px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border-radius: 50%;
+}
+
+.benefit-item h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.benefit-item p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.premium-payment-section {
+  padding: 0 20px 30px;
+}
+
+.payment-info {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.payment-info h2 {
+  margin: 0 0 10px 0;
+  font-size: 24px;
+  color: #333;
+}
+
+.payment-info .price {
+  font-size: 32px;
+  font-weight: 700;
+  color: #667eea;
+  margin: 10px 0;
+}
+
+.payment-info .price span {
+  font-size: 16px;
+  font-weight: 400;
+  color: #666;
+}
+
+.payment-info p {
+  margin: 10px 0 0 0;
+  color: #666;
+}
+
+.error-message {
+  background: #fee;
+  color: #c0392b;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #f5c6cb;
+}
+
+.payment-status {
+  background: #d4edda;
+  color: #155724;
+  padding: 12px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid #c3e6cb;
+}
+
+.payment-actions {
+  display: grid;
+  gap: 20px;
+}
+
+.payment-option {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.payment-option h3 {
+  margin: 0 0 15px 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.payment-button,
+.verify-button {
+  width: 100%;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.payment-button {
+  background: #28a745;
+  color: white;
+}
+
+.payment-button:hover:not(:disabled) {
+  background: #218838;
+}
+
+.payment-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.verification-input {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.transaction-input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  font-size: 16px;
+}
+
+.transaction-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+
+.verify-button {
+  background: #007bff;
+  color: white;
+  white-space: nowrap;
+}
+
+.verify-button:hover:not(:disabled) {
+  background: #0056b3;
+}
+
+.verify-button:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+.premium-payment-footer {
+  padding: 20px;
+  text-align: center;
+  border-top: 1px solid #dee2e6;
+}
+
+.back-button {
+  background: #6c757d;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.back-button:hover {
+  background: #5a6268;
+}
+
+/* Dark mode styles */
+[data-theme="dark"] .premium-payment-page {
+  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+}
+
+[data-theme="dark"] .premium-payment-container {
+  background: #2d3748;
+  color: white;
+}
+
+[data-theme="dark"] .benefit-item {
+  background: #4a5568;
+}
+
+[data-theme="dark"] .benefit-item h3 {
+  color: white;
+}
+
+[data-theme="dark"] .benefit-item p {
+  color: #cbd5e0;
+}
+
+[data-theme="dark"] .payment-info h2 {
+  color: white;
+}
+
+[data-theme="dark"] .payment-option {
+  background: #4a5568;
+  border-color: #718096;
+}
+
+[data-theme="dark"] .payment-option h3 {
+  color: white;
+}
+
+[data-theme="dark"] .transaction-input {
+  background: #4a5568;
+  border-color: #718096;
+  color: white;
+}
+
+[data-theme="dark"] .transaction-input:focus {
+  border-color: #667eea;
+}
+
+[data-theme="dark"] .premium-payment-footer {
+  border-color: #718096;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .premium-payment-page {
+    padding: 10px;
+  }
+  
+  .premium-payment-header {
+    padding: 20px 15px;
+  }
+  
+  .premium-payment-header h1 {
+    font-size: 24px;
+  }
+  
+  .premium-payment-benefits {
+    padding: 20px 15px;
+  }
+  
+  .benefit-item {
+    flex-direction: column;
+    text-align: center;
+    gap: 10px;
+  }
+  
+  .verification-input {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .transaction-input,
+  .payment-button,
+  .verify-button {
+    width: 100%;
+  }
+}

@@ -1,7 +1,7 @@
 .cart-page {
   min-height: 100vh;
   padding: 32px 20px 40px;
-  background: linear-gradient(180deg, #f7fbff 0%, #eef4f7 100%);
+  background: var(--gradient-secondary);
 }
 
 .cart-page__shell {
@@ -14,9 +14,9 @@
 .cart-header,
 .cart-summary,
 .cart-empty {
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
+  box-shadow: var(--card-shadow);
   border-radius: 24px;
 }
 
@@ -30,7 +30,7 @@
 
 .cart-header__eyebrow {
   margin: 0 0 8px;
-  color: #0f766e;
+  color: var(--accent);
   font-size: 0.8rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -39,19 +39,19 @@
 
 .cart-header h1 {
   margin: 0;
-  color: #0f172a;
+  color: var(--page-text);
 }
 
 .cart-header p {
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--muted-text);
 }
 
 .cart-header__back {
   border: none;
   border-radius: 999px;
   padding: 12px 18px;
-  background: linear-gradient(135deg, #0f766e, #0891b2);
+  background: var(--button-primary);
   color: #fff;
   font-weight: 700;
 }
@@ -61,7 +61,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  color: #155e75;
+  color: var(--page-text);
 }
 
 .cart-empty {
@@ -71,11 +71,12 @@
 
 .cart-empty h2 {
   margin: 0;
+  color: var(--page-text);
 }
 
 .cart-empty p {
   margin: 8px 0 0;
-  color: #64748b;
+  color: var(--muted-text);
 }
 
 .cart-grid {

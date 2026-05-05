@@ -7,6 +7,7 @@ import ViewDetails from "./pages/ViewDetails";
 import Cart from "./pages/Cart";
 import Checkout from "./pages/Checkout";
 import Dashboard from "./pages/Dashboard";
+import PremiumPayment from "./components/PremiumPayment";
 import ThemeProvider from "./contexts/ThemeContext";
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
           <Route path="/register" element={<Register />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/add" element={<AddProperty />} />
+          <Route path="/premium-payment" element={<PremiumPayment />} />
           <Route path="/ViewDetails" element={<ViewDetails />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />

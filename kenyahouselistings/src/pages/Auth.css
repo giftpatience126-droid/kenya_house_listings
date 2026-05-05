@@ -1,9 +1,7 @@
 .auth-page {
   min-height: 100vh;
   padding: 32px 20px;
-  background:
-    radial-gradient(circle at top left, rgba(14, 116, 144, 0.16), transparent 30%),
-    linear-gradient(180deg, #f7fbff 0%, #eef4f7 100%);
+  background: var(--gradient-primary);
   color: var(--page-text);
 }
 
@@ -30,7 +28,7 @@
 
 .auth-hero__eyebrow {
   margin: 0 0 10px;
-  color: #0f766e;
+  color: var(--accent);
   font-size: 0.82rem;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -69,8 +67,9 @@
   justify-content: flex-start;
   border-radius: 999px;
   padding: 10px 14px;
-  background: rgba(8, 145, 178, 0.08);
-  color: #155e75;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
+  color: var(--page-text);
   font-weight: 600;
 }
 
@@ -98,7 +97,7 @@
 .auth-form select,
 .auth-form textarea {
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid var(--surface-border);
   border-radius: 14px;
   padding: 12px 14px;
   background: var(--input-bg);
@@ -124,7 +123,7 @@
   right: 8px;
   border: none;
   background: transparent;
-  color: #475569;
+  color: var(--muted-text);
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
@@ -138,25 +137,26 @@
 }
 
 .auth-status--success {
-  background: #ecfdf5;
-  color: #047857;
+  background: var(--success-bg);
+  color: var(--success);
 }
 
 .auth-status--error {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--error-bg);
+  color: var(--error);
 }
 
 .auth-status--info {
-  background: #eff6ff;
-  color: #1d4ed8;
+  background: var(--surface-bg);
+  color: var(--accent);
+  border: 1px solid var(--surface-border);
 }
 
 .auth-plan-card {
   border-radius: 18px;
   padding: 14px 16px;
-  background: linear-gradient(180deg, rgba(236, 254, 255, 0.95), rgba(255, 255, 255, 0.95));
-  border: 1px solid rgba(8, 145, 178, 0.16);
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
 }
 
 .auth-plan-card strong,
@@ -186,12 +186,21 @@
 }
 
 .auth-actions button:first-child {
-  background: linear-gradient(135deg, #0f172a, #164e63);
+  background: var(--button-secondary);
+}
+
+.auth-actions button:first-child:hover {
+  background: var(--button-secondary-hover);
 }
 
 .auth-actions button:last-child,
 .auth-helper button {
-  background: linear-gradient(135deg, #0f766e, #0891b2);
+  background: var(--button-primary);
+}
+
+.auth-actions button:last-child:hover,
+.auth-helper button:hover {
+  background: var(--button-primary-hover);
 }
 
 .auth-helper {
@@ -206,11 +215,7 @@
   color: var(--muted-text);
 }
 
-[data-theme="dark"] .auth-page {
-  background:
-    radial-gradient(circle at top left, rgba(8, 145, 178, 0.2), transparent 30%),
-    linear-gradient(180deg, #020617 0%, #0f172a 100%);
-}
+/* Dark theme overrides are now handled by CSS variables */
 
 .auth-helper button {
   min-width: 130px;

@@ -80,12 +80,21 @@ export const hasPaidListingFee = (session) => {
   return session?.hasPaidListingFee === true;
 };
 
+export const hasPaidPremiumFee = (session) => {
+  return session?.hasPaidPremiumFee === true;
+};
+
 export const setListingFeePaid = () => {
   const session = getSession();
   if (session) {
-    const updates = { ...session, hasPaidListingFee: true };
-    saveSession(updates);
-    updateUser(session.email, { hasPaidListingFee: true });
+    saveSession({ ...session, hasPaidListingFee: true });
+  }
+};
+
+export const setPremiumFeePaid = () => {
+  const session = getSession();
+  if (session) {
+    saveSession({ ...session, hasPaidPremiumFee: true, plan: 'premium' });
   }
 };
 

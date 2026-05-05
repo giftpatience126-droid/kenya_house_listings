@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { activatePremiumForEmail, buildSessionFromUser, saveSession, saveUser } from "../utils/auth";
+import { buildSessionFromUser, saveSession, saveUser } from "../utils/auth";
 import { getFriendlyApiErrorMessage, isRecoverableApiError, mpesaPaymentApi, signUpApi } from "../utils/api";
 import "./Auth.css";
 
@@ -92,23 +92,21 @@ function Register() {
           account_reference: "Premium Account Activation",
           transaction_desc: "Kenya House Listings Premium signup"
         });
+        setSuccess(
+          `Premium account created. A Ksh ${PREMIUM_PRICE} payment prompt has been sent. Please complete the payment and verify it to activate your premium access.`
+        );
       } catch (apiError) {
         if (!isRecoverableApiError(apiError)) {
           setLoading(false);
           setError(getFriendlyApiErrorMessage(apiError, "Premium payment could not be started."));
           return;
         }
+        setSuccess(
+          `Premium account created. Payment service is temporarily unavailable. Please try payment later from your dashboard.`
+        );
       }
 
-      const activatedUser = activatePremiumForEmail(form.email, {
-        transactionId: `PREM-${Date.now()}`,
-        activatedAt: new Date().toISOString()
-      });
-
-      saveSession(buildSessionFromUser(activatedUser || { ...userPayload, plan: "premium" }));
-      setSuccess(
-        `Premium account created. A Ksh ${PREMIUM_PRICE} payment prompt has been sent and your Premium access is now active.`
-      );
+      saveSession(buildSessionFromUser({ ...userPayload, plan: "free" })); // Start as free, upgrade after payment
     } else {
       saveSession(buildSessionFromUser(userPayload));
       setSuccess(

@@ -8,6 +8,8 @@ export const API_ENDPOINTS = {
   addproducts: `${API_ORIGIN}/api/addproducts`,
   verifyListingPayment: `${API_ORIGIN}/api/verify_listing_payment`,
   mpesaPayment: `${API_ORIGIN}/api/mpesa_payment`,
+  premiumPayment: `${API_ORIGIN}/api/premium_payment`,
+  verifyPremiumPayment: `${API_ORIGIN}/api/verify_premium_payment`,
   cart: `${API_ORIGIN}/api/cart`,
   reservations: `${API_ORIGIN}/api/reservations`
 };
@@ -111,6 +113,29 @@ export function verifyListingPaymentApi(payload) {
       transaction_id: payload.transactionId,
       phone: payload.phone,
       amount: payload.amount || "30"
+    })
+  );
+}
+
+export function premiumPaymentApi(payload) {
+  return post(
+    API_ENDPOINTS.premiumPayment,
+    toFormData({
+      email: payload.email,
+      phone: payload.phone,
+      amount: payload.amount || "100"
+    })
+  );
+}
+
+export function verifyPremiumPaymentApi(payload) {
+  return post(
+    API_ENDPOINTS.verifyPremiumPayment,
+    toFormData({
+      email: payload.email,
+      transaction_id: payload.transactionId,
+      phone: payload.phone,
+      amount: payload.amount || "100"
     })
   );
 }

@@ -139,16 +139,24 @@ function Dashboard() {
         </section>
 
         {!isPremium && (
-          <section className="dashboard-ad-grid">
-            <article className="dashboard-ad-card">
-              <span>Upgrade</span>
-              <strong>Premium unlocks secure seller messaging</strong>
-              <p>Free accounts keep reservations simple, while Premium adds messaging and an ad-light dashboard.</p>
+          <section className="home-ad-grid">
+            <article className="home-ad-card">
+              <span>Sponsored</span>
+              <strong>Upgrade to Premium</strong>
+              <p>Unlock ad-free browsing, dark mode, and exclusive features for just Ksh 100/month.</p>
+              <button 
+                type="button" 
+                onClick={() => navigate('/premium-payment')}
+                className="auth-button auth-button--primary"
+                style={{ marginTop: '12px' }}
+              >
+                Upgrade Now for Ksh 100
+              </button>
             </article>
-            <article className="dashboard-ad-card">
-              <span>Monetisation</span>
-              <strong>Sponsored placement available</strong>
-              <p>Feature your listing or hospitality brand in these dashboard ad spaces.</p>
+            <article className="home-ad-card">
+              <span>Promoted</span>
+              <strong>List Faster with M-Pesa</strong>
+              <p>Sellers can publish new listings with a simple Ksh 30 M-Pesa prompt during submission.</p>
             </article>
           </section>
         )}
