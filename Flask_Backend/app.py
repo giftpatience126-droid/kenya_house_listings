@@ -3,6 +3,7 @@ import pymysql
 import os
 import json
 import datetime
+import sqlite3
 from flask_cors import CORS
 
 app = Flask(__name__)
@@ -31,191 +32,453 @@ def parse_json_field(value, default):
 
     try:
         return json.loads(value)
-    except Exception:
+    except (json.JSONDecodeError, TypeError):
         return default
 
+
 def get_db_connection():
-    return pymysql.connect(
-        user=os.getenv("DB_USER", "root"),
-        host=os.getenv("DB_HOST", "localhost"),
-        password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "chuisokogarden")
-    )
+    # Check if SQLite is preferred
+    if os.getenv("DB_TYPE") == "sqlite":
+        return get_sqlite_connection()
+    
+    # Default to MySQL
+    return get_mysql_connection()
 
-# create a route
 
-@app.route("/api/signup", methods=["POST"])
-def signup():
+def get_mysql_connection():
     try:
-        form = request.form
-        username = form.get("username") or form.get("name")
-        password = form.get("password")
-        email = form.get("email")
-        phone = form.get("phone")
-
-        if not username or not password or not email:
-            return jsonify({"error": "Username, email, and password are required."}), 400
-
-        connection = get_db_connection()
-        cursor = connection.cursor()
-
-        cursor.execute("SELECT id FROM users WHERE email = %s", (email,))
-        if cursor.fetchone():
-            return jsonify({"error": "An account with that email already exists."}), 409
-        
-        cursor.execute(
-            "INSERT INTO users(username, password, email, phone) VALUES(%s, %s, %s, %s)",
-            (username, password, email, phone)
+        connection = pymysql.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASSWORD", ""),
+            database=os.getenv("DB_NAME", "chuisokogarden"),
+            cursorclass=pymysql.cursors.DictCursor,
         )
-        connection.commit()
-        return jsonify({"message": "Thank you for joining"})
+        return connection
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if 'connection' in locals():
-            connection.close()
+        print(f"MySQL connection error: {e}")
+        raise e
 
 
+def get_sqlite_connection():
+    try:
+        connection = sqlite3.connect('kenyahouselistings.db')
+        connection.row_factory = sqlite3.Row
+        return connection
+    except Exception as e:
+        print(f"SQLite connection error: {e}")
+        raise e
+
+
+def init_sqlite_db():
+    """Initialize SQLite database with required tables"""
+    conn = get_sqlite_connection()
+    cursor = conn.cursor()
+    
+    # Create users table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            phone TEXT NOT NULL,
+            password TEXT NOT NULL,
+            role TEXT DEFAULT 'buyer',
+            plan TEXT DEFAULT 'free',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create product_details table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS product_details (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            seller_email TEXT NOT NULL,
+            seller_name TEXT NOT NULL,
+            seller_phone TEXT NOT NULL,
+            product_name TEXT NOT NULL,
+            product_description TEXT,
+            price TEXT NOT NULL,
+            location TEXT NOT NULL,
+            category TEXT,
+            guests INTEGER DEFAULT 1,
+            bedrooms INTEGER DEFAULT 1,
+            bathrooms INTEGER DEFAULT 1,
+            amenities TEXT,
+            images TEXT,
+            availability TEXT,
+            booking_contact TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create cart table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS cart (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            buyer_email TEXT NOT NULL,
+            buyer_name TEXT NOT NULL,
+            items TEXT,
+            item_count INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    # Create reservations table
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reservations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            reservation_id TEXT UNIQUE NOT NULL,
+            buyer_name TEXT NOT NULL,
+            buyer_email TEXT NOT NULL,
+            buyer_phone TEXT NOT NULL,
+            seller_email TEXT NOT NULL,
+            listing_id TEXT NOT NULL,
+            listing_title TEXT NOT NULL,
+            listing_price TEXT NOT NULL,
+            guests INTEGER DEFAULT 1,
+            reservation_date TEXT NOT NULL,
+            notes TEXT,
+            payment_method TEXT DEFAULT 'mpesa',
+            amount TEXT DEFAULT '0',
+            payment_details TEXT,
+            items TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+
+
+# Root route for Render health check
+@app.route('/')
+def root():
+    return jsonify({
+        'message': 'Kenya House Listings API',
+        'status': 'running',
+        'database': 'MySQL' if os.getenv("DB_TYPE") != "sqlite" else 'SQLite',
+        'endpoints': [
+            '/api/health',
+            '/api/signin',
+            '/api/signup',
+            '/api/addproducts',
+            '/api/mpesa_payment',
+            '/api/premium_payment',
+            '/api/verify_listing_payment',
+            '/api/verify_premium_payment',
+            '/api/cart',
+            '/api/reservations'
+        ]
+    })
+
+
+# Health check endpoint for deployment monitoring
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'service': 'Kenya House Listings API',
+        'version': '1.0.0',
+        'database': 'MySQL' if os.getenv("DB_TYPE") != "sqlite" else 'SQLite',
+        'timestamp': datetime.datetime.now().isoformat(),
+        'endpoints': [
+            '/api/signin',
+            '/api/signup', 
+            '/api/addproducts',
+            '/api/mpesa_payment',
+            '/api/premium_payment',
+            '/api/verify_listing_payment',
+            '/api/verify_premium_payment',
+            '/api/cart',
+            '/api/reservations'
+        ]
+    })
 
 
 @app.route("/api/signin", methods=["POST"])
 def signin():
     try:
         data = get_request_data()
+        email = get_request_value(data, "email")
+        password = get_request_value(data, "password")
+
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+
         connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        cursor.execute(
-            "SELECT * FROM users WHERE email=%s AND password=%s",
-            (data.get("email"), data.get("password"))
-        )
-        
-        if cursor.rowcount == 0:
-            return jsonify({"message": "Login failed"}), 401
-        
-        return jsonify({
-            "message": "Login successful",
-            "user": cursor.fetchone()
-        })
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            user = cursor.fetchone()
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            user = cursor.fetchone()
+
+        if user and password == user["password"]:
+            return jsonify({
+                "message": "Login successful",
+                "user": {
+                    "name": user["name"],
+                    "email": user["email"],
+                    "phone": user["phone"],
+                    "role": user["role"],
+                    "plan": user.get("plan", "free")
+                }
+            })
+
+        return jsonify({"error": "Invalid credentials"}), 401
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         if 'connection' in locals():
             connection.close()
-    
+
+
+@app.route("/api/signup", methods=["POST"])
+def signup():
+    try:
+        data = get_request_data()
+        name = get_request_value(data, "name")
+        email = get_request_value(data, "email")
+        phone = get_request_value(data, "phone")
+        password = get_request_value(data, "password")
+        role = get_request_value(data, "role", "buyer")
+        plan = get_request_value(data, "plan", "free")
+
+        if not all([name, email, phone, password]):
+            return jsonify({"error": "All fields are required"}), 400
+
+        connection = get_db_connection()
+        
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
+            existing_user = cursor.fetchone()
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
+            existing_user = cursor.fetchone()
+
+        if existing_user:
+            return jsonify({"error": "User with this email already exists"}), 400
+
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor.execute(
+                "INSERT INTO users (name, email, phone, password, role, plan) VALUES (?, ?, ?, ?, ?, ?)",
+                (name, email, phone, password, role, plan)
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO users (name, email, phone, password, role, plan) VALUES (%s, %s, %s, %s, %s, %s)",
+                (name, email, phone, password, role, plan)
+            )
+        
+        connection.commit()
+
+        return jsonify({
+            "message": "User created successfully",
+            "user": {
+                "name": name,
+                "email": email,
+                "phone": phone,
+                "role": role,
+                "plan": plan
+            }
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if 'connection' in locals():
+            connection.close()
 
 
 @app.route("/api/addproducts", methods=["POST"])
 def addproducts():
     try:
-        product_photo = request.files.get('product_photo')
-        filename = None
+        data = get_request_data()
         
-        if product_photo and product_photo.filename:
-            os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
-            filename = product_photo.filename
-            product_photo.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        seller_email = get_request_value(data, "seller_email")
+        seller_name = get_request_value(data, "seller_name")
+        seller_phone = get_request_value(data, "seller_phone")
         
+        product_name = get_request_value(data, "product_name")
+        product_description = get_request_value(data, "product_description")
+        price = get_request_value(data, "price")
+        location = get_request_value(data, "location")
+        category = get_request_value(data, "category")
+        guests = get_request_value(data, "guests", "1")
+        bedrooms = get_request_value(data, "bedrooms", "1")
+        bathrooms = get_request_value(data, "bathrooms", "1")
+        
+        amenities = parse_json_field(get_request_value(data, "amenities"), [])
+        images = parse_json_field(get_request_value(data, "images"), [])
+        availability = parse_json_field(get_request_value(data, "availability"), {})
+        booking_contact = get_request_value(data, "booking_contact", seller_phone)
+
+        if not all([seller_email, seller_name, product_name, price, location]):
+            return jsonify({"error": "Required fields missing"}), 400
+
         connection = get_db_connection()
-        cursor = connection.cursor()
         
-        # Get form data with fallbacks for optional fields
-        product_name = request.form.get("product_name")
-        product_description = request.form.get("product_description")
-        product_cost = request.form.get("product_cost")
-        category = request.form.get("category")
-        location = request.form.get("location")
-        seller_name = request.form.get("seller_name")
-        seller_email = request.form.get("seller_email")
-        product_photo_url = request.form.get("product_photo_url")
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO product_details 
+                (seller_email, seller_name, seller_phone, product_name, product_description, 
+                 price, location, category, guests, bedrooms, bathrooms, 
+                 amenities, images, availability, booking_contact)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    seller_email, seller_name, seller_phone, product_name, product_description,
+                    price, location, category, guests, bedrooms, bathrooms,
+                    json.dumps(amenities), json.dumps(images), json.dumps(availability), booking_contact
+                )
+            )
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute(
+                """
+                INSERT INTO product_details 
+                (seller_email, seller_name, seller_phone, product_name, product_description, 
+                 price, location, category, guests, bedrooms, bathrooms, 
+                 amenities, images, availability, booking_contact)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    seller_email, seller_name, seller_phone, product_name, product_description,
+                    price, location, category, guests, bedrooms, bathrooms,
+                    json.dumps(amenities), json.dumps(images), json.dumps(availability), booking_contact
+                )
+            )
         
-        cursor.execute(
-            "INSERT INTO product_details(product_name, product_description, product_cost, product_photo, category, location, seller_name, seller_email, product_photo_url) VALUES(%s, %s, %s, %s, %s, %s, %s, %s, %s)",
-            (product_name, product_description, product_cost, filename or product_photo_url, 
-             category, location, seller_name, seller_email, product_photo_url)
-        )
         connection.commit()
-        return jsonify({"message": "Product added successfully"})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if 'connection' in locals():
-            connection.close()
-    
-@app.route("/api/getproductdetails")
-def getproductdetails():
-    try:
-        connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
-        cursor.execute("SELECT * FROM product_details")
-        return jsonify(cursor.fetchall())
+        
+        return jsonify({
+            "message": "Product added successfully",
+            "product": {
+                "seller_email": seller_email,
+                "product_name": product_name,
+                "price": price,
+                "location": location
+            }
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         if 'connection' in locals():
             connection.close()
 
+
 @app.route("/api/cart", methods=["POST"])
 def save_cart():
     try:
         data = get_request_data()
-        buyer_email = get_request_value(data, "buyerEmail", "buyer_email")
-        buyer_name = get_request_value(data, "buyerName", "buyer_name")
-        items = parse_json_field(data.get("items", []), [])
         
-        # Here you would save to database - for now just return success
-        return jsonify({"message": "Cart saved successfully", "items_count": len(items)})
+        buyer_email = get_request_value(data, "buyer_email")
+        buyer_name = get_request_value(data, "buyer_name")
+        items = parse_json_field(get_request_value(data, "items"), [])
+        item_count = len(items)
+
+        if not buyer_email:
+            return jsonify({"error": "Buyer email is required"}), 400
+
+        connection = get_db_connection()
+        
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute(
+                "INSERT INTO cart (buyer_email, buyer_name, items, item_count) VALUES (?, ?, ?, ?)",
+                (buyer_email, buyer_name, json.dumps(items), item_count)
+            )
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute(
+                "INSERT INTO cart (buyer_email, buyer_name, items, item_count) VALUES (%s, %s, %s, %s)",
+                (buyer_email, buyer_name, json.dumps(items), item_count)
+            )
+        
+        connection.commit()
+        
+        return jsonify({
+            "message": "Cart saved successfully",
+            "cart": {
+                "buyer_email": buyer_email,
+                "item_count": item_count
+            }
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        if 'connection' in locals():
+            connection.close()
+
 
 @app.route("/api/reservations", methods=["POST"])
 def create_reservation():
     try:
         data = get_request_data()
         
-        # Extract reservation data
-        buyer_name = get_request_value(data, "buyerName", "buyer_name")
-        buyer_email = get_request_value(data, "buyerEmail", "buyer_email")
-        buyer_phone = get_request_value(data, "buyerPhone", "buyer_phone")
-        guests = data.get("guests")
-        reservation_date = get_request_value(data, "reservationDate", "reservation_date")
-        notes = data.get("notes")
-        payment_method = get_request_value(data, "paymentMethod", "payment_method")
-        amount = data.get("amount")
-        payment_details = parse_json_field(data.get("payment_details"), {})
-        items = parse_json_field(data.get("items", []), [])
-        
-        # Extract seller and listing info from items
-        seller_email = None
-        listing_id = None
-        listing_title = None
-        listing_price = None
-        
-        if items and len(items) > 0:
-            first_item = items[0]
-            seller_email = first_item.get("sellerEmail")
-            listing_id = first_item.get("id")
-            listing_title = first_item.get("title")
-            listing_price = first_item.get("price")
-        
-        # Save to database
+        buyer_name = get_request_value(data, "buyer_name")
+        buyer_email = get_request_value(data, "buyer_email")
+        buyer_phone = get_request_value(data, "buyer_phone")
+        seller_email = get_request_value(data, "seller_email")
+        listing_id = get_request_value(data, "listing_id")
+        listing_title = get_request_value(data, "listing_title")
+        listing_price = get_request_value(data, "listing_price")
+        guests = get_request_value(data, "guests", "1")
+        reservation_date = get_request_value(data, "reservation_date")
+        notes = get_request_value(data, "notes", "")
+        payment_method = get_request_value(data, "payment_method", "mpesa")
+        amount = get_request_value(data, "amount", "0")
+        payment_details = parse_json_field(get_request_value(data, "payment_details"), {})
+        items = parse_json_field(get_request_value(data, "items"), [])
+
+        if not all([buyer_name, buyer_email, seller_email, listing_id]):
+            return jsonify({"error": "Required fields missing"}), 400
+
         connection = get_db_connection()
-        cursor = connection.cursor()
         
         reservation_id = f"RES-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
         
-        cursor.execute(
-            """INSERT INTO reservations (
-                reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
-                listing_id, listing_title, listing_price, guests, reservation_date,
-                notes, payment_method, amount, payment_details, items
-            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (
-                reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
-                listing_id, listing_title, listing_price, guests, reservation_date,
-                notes, payment_method, amount, json.dumps(payment_details), json.dumps(items)
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute('''
+                INSERT INTO reservations 
+                (reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
+                 listing_id, listing_title, listing_price, guests, reservation_date,
+                 notes, payment_method, amount, payment_details, items)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''',
+                (
+                    reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
+                    listing_id, listing_title, listing_price, guests, reservation_date,
+                    notes, payment_method, amount, json.dumps(payment_details), json.dumps(items)
+                )
             )
-        )
+        else:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO reservations 
+                (reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
+                 listing_id, listing_title, listing_price, guests, reservation_date,
+                 notes, payment_method, amount, payment_details, items)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
+                    listing_id, listing_title, listing_price, guests, reservation_date,
+                    notes, payment_method, amount, json.dumps(payment_details), json.dumps(items)
+                )
+            )
         
         connection.commit()
         
@@ -239,9 +502,6 @@ def verify_listing_payment():
         phone = data.get("phone")
         amount = data.get("amount", "0")
 
-        if not email or not transaction_id:
-            return jsonify({"error": "Email and transaction ID are required."}), 400
-
         return jsonify({
             "message": "Payment verified successfully",
             "email": email,
@@ -251,6 +511,47 @@ def verify_listing_payment():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/premium_payment", methods=["POST"])
+def premium_payment():
+    try:
+        data = get_request_data()
+        email = get_request_value(data, "email")
+        transaction_id = get_request_value(data, "transactionId")
+        phone = get_request_value(data, "phone")
+        amount = get_request_value(data, "amount", "100")
+
+        return jsonify({
+            "message": "Premium payment initiated",
+            "email": email,
+            "transaction_id": transaction_id,
+            "phone": phone,
+            "amount": amount
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/verify_premium_payment", methods=["POST"])
+def verify_premium_payment():
+    try:
+        data = get_request_data()
+        email = get_request_value(data, "email")
+        transaction_id = get_request_value(data, "transactionId")
+        phone = get_request_value(data, "phone")
+        amount = get_request_value(data, "amount", "100")
+
+        return jsonify({
+            "message": "Premium payment verified successfully",
+            "email": email,
+            "transaction_id": transaction_id,
+            "phone": phone,
+            "amount": amount
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 # Categories API
 @app.route("/api/categories")
@@ -267,24 +568,33 @@ def get_categories():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 # Dashboard APIs
 @app.route("/api/dashboard/stats/<email>")
 def get_dashboard_stats(email):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        # Get user's listings
-        cursor.execute("SELECT COUNT(*) as listings_count FROM product_details WHERE seller_email = %s", (email,))
-        listings_count = cursor.fetchone()['listings_count']
-        
-        # Get user's reservations (as seller)
-        cursor.execute("SELECT COUNT(*) as reservations_count FROM reservations WHERE seller_email = %s", (email,))
-        reservations_count = cursor.fetchone()['reservations_count']
-        
-        # Get user's cart items (as buyer)
-        cursor.execute("SELECT COUNT(*) as cart_count FROM cart WHERE buyer_email = %s", (email,))
-        cart_count = cursor.fetchone()['cart_count']
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute("SELECT COUNT(*) as listings_count FROM product_details WHERE seller_email = ?", (email,))
+            listings_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) as reservations_count FROM reservations WHERE seller_email = ?", (email,))
+            reservations_count = cursor.fetchone()[0]
+            
+            cursor.execute("SELECT COUNT(*) as cart_count FROM cart WHERE buyer_email = ?", (email,))
+            cart_count = cursor.fetchone()[0]
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT COUNT(*) as listings_count FROM product_details WHERE seller_email = %s", (email,))
+            listings_count = cursor.fetchone()['listings_count']
+            
+            cursor.execute("SELECT COUNT(*) as reservations_count FROM reservations WHERE seller_email = %s", (email,))
+            reservations_count = cursor.fetchone()['reservations_count']
+            
+            cursor.execute("SELECT COUNT(*) as cart_count FROM cart WHERE buyer_email = %s", (email,))
+            cart_count = cursor.fetchone()['cart_count']
         
         stats = {
             "listings": listings_count,
@@ -299,14 +609,20 @@ def get_dashboard_stats(email):
         if 'connection' in locals():
             connection.close()
 
+
 @app.route("/api/dashboard/listings/<email>")
 def get_user_listings(email):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        cursor.execute("SELECT * FROM product_details WHERE seller_email = %s ORDER BY created_at DESC", (email,))
-        listings = cursor.fetchall()
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM product_details WHERE seller_email = ? ORDER BY created_at DESC", (email,))
+            listings = cursor.fetchall()
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM product_details WHERE seller_email = %s ORDER BY created_at DESC", (email,))
+            listings = cursor.fetchall()
         
         return jsonify(listings)
     except Exception as e:
@@ -315,15 +631,20 @@ def get_user_listings(email):
         if 'connection' in locals():
             connection.close()
 
+
 @app.route("/api/dashboard/reservations/<email>")
 def get_user_reservations(email):
     try:
         connection = get_db_connection()
-        cursor = connection.cursor(pymysql.cursors.DictCursor)
         
-        # Get reservations where user is seller
-        cursor.execute("SELECT * FROM reservations WHERE seller_email = %s ORDER BY created_at DESC", (email,))
-        reservations = cursor.fetchall()
+        if os.getenv("DB_TYPE") == "sqlite":
+            cursor = connection.cursor()
+            cursor.execute("SELECT * FROM reservations WHERE seller_email = ? ORDER BY created_at DESC", (email,))
+            reservations = cursor.fetchall()
+        else:
+            cursor = connection.cursor(pymysql.cursors.DictCursor)
+            cursor.execute("SELECT * FROM reservations WHERE seller_email = %s ORDER BY created_at DESC", (email,))
+            reservations = cursor.fetchall()
         
         return jsonify(reservations)
     except Exception as e:
@@ -331,9 +652,6 @@ def get_user_reservations(email):
     finally:
         if 'connection' in locals():
             connection.close()
-
-
-
 
 
 import requests
@@ -386,56 +704,10 @@ def mpesa_payment():
         return jsonify({"error": str(e)}), 500
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Health check endpoint for deployment monitoring
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    return jsonify({
-        'status': 'healthy',
-        'service': 'Kenya House Listings API',
-        'version': '1.0.0',
-        'timestamp': datetime.datetime.now().isoformat(),
-        'endpoints': [
-            '/api/signin',
-            '/api/signup', 
-            '/api/addproducts',
-            '/api/mpesa_payment',
-            '/api/premium_payment',
-            '/api/verify_listing_payment',
-            '/api/verify_premium_payment',
-            '/api/cart',
-            '/api/reservations'
-        ]
-    })
-
 if __name__ == "__main__":
-    app.run(debug=True, host="0.0.0.0", port=5000)
+    # Initialize SQLite database if needed
+    if os.getenv("DB_TYPE") == "sqlite":
+        init_sqlite_db()
+    
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

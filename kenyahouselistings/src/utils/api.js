@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "https://kenyahouselistings.vercel.app";
+const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "https://kenya-house-listings-api.onrender.com";
 
 // Configure axios defaults for better CORS handling
 axios.defaults.withCredentials = false;
