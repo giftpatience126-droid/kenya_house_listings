@@ -225,8 +225,31 @@
 }
 
 .dashboard-status--error {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.dashboard-status--info {
+  background: var(--surface-bg);
+  color: var(--page-text);
+  border: 1px solid var(--surface-border);
+}
+
+.api-status-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.api-status-message {
+  margin-bottom: 4px;
+}
+
+.api-status-details {
+  opacity: 0.8;
+  font-size: 0.9em;
 }
 
 .dashboard-message small,

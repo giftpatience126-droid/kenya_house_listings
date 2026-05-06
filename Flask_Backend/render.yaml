@@ -1,0 +1,16 @@
+services:
+  # Web Service
+  - type: web
+    name: kenya-house-listings-api
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.9
+      - key: PORT
+        value: 5000
+    healthCheckPath: /api/health

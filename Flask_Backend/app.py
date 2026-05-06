@@ -416,10 +416,26 @@ def mpesa_payment():
 
 
 
-
-
-
+# Health check endpoint for deployment monitoring
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'service': 'Kenya House Listings API',
+        'version': '1.0.0',
+        'timestamp': datetime.datetime.now().isoformat(),
+        'endpoints': [
+            '/api/signin',
+            '/api/signup', 
+            '/api/addproducts',
+            '/api/mpesa_payment',
+            '/api/premium_payment',
+            '/api/verify_listing_payment',
+            '/api/verify_premium_payment',
+            '/api/cart',
+            '/api/reservations'
+        ]
+    })
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
-
