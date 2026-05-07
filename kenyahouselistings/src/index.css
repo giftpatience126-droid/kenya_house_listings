@@ -31,7 +31,7 @@ html {
 }
 
 [data-theme="dark"] {
-  --page-bg: #020617;
+  --page-bg: #111827;
   --page-text: #e2e8f0;
   --surface-bg: rgba(15, 23, 42, 0.88);
   --solid-surface-bg: #0f172a;
@@ -56,9 +56,9 @@ html {
   --auth-bg: #1f2937;
   --card-bg: #1f2937;
   --overlay: rgba(0, 0, 0, 0.3);
-  --gradient-primary: linear-gradient(135deg, #020617 0%, #0f172a 100%);
-  --gradient-secondary: linear-gradient(135deg, #020617 0%, #111827 100%);
-  --soft-page-bg: linear-gradient(180deg, #020617 0%, #0f172a 100%);
+  --gradient-primary: linear-gradient(135deg, #111827 0%, #164e63 100%);
+  --gradient-secondary: linear-gradient(135deg, #111827 0%, #1f2937 100%);
+  --soft-page-bg: linear-gradient(180deg, #111827 0%, #1f2937 100%);
 }
 
 input {
@@ -80,6 +80,12 @@ body {
   background: var(--page-bg);
   color: var(--page-text);
   transition: background-color 180ms ease, color 180ms ease;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
 }
 
 a {

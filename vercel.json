@@ -1,8 +1,12 @@
 {
   "version": 2,
-  "buildCommand": "cd kenyahouselistings && npm install && npm run build",
+  "buildCommand": "cd kenyahouselistings && npm ci && npm run build",
   "outputDirectory": "kenyahouselistings/build",
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/index.py"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"

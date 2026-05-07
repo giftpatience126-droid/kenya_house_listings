@@ -1,22 +1,24 @@
 import axios from "axios";
 import { buildSessionFromUser, findUserByEmail, saveUser } from "./auth";
 
-const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "http://localhost:5000";
+const API_ORIGIN = (process.env.REACT_APP_API_ORIGIN || "").replace(/\/$/, "");
+const apiUrl = (path) => `${API_ORIGIN}${path}`;
 
 // Configure axios defaults for better CORS handling
 axios.defaults.withCredentials = false;
 axios.defaults.headers.common['Content-Type'] = 'application/json';
 
 export const API_ENDPOINTS = {
-  signin: `${API_ORIGIN}/api/signin`,
-  signup: `${API_ORIGIN}/api/signup`,
-  addproducts: `${API_ORIGIN}/api/addproducts`,
-  verifyListingPayment: `${API_ORIGIN}/api/verify_listing_payment`,
-  mpesaPayment: `${API_ORIGIN}/api/mpesa_payment`,
-  premiumPayment: `${API_ORIGIN}/api/premium_payment`,
-  verifyPremiumPayment: `${API_ORIGIN}/api/verify_premium_payment`,
-  cart: `${API_ORIGIN}/api/cart`,
-  reservations: `${API_ORIGIN}/api/reservations`
+  health: apiUrl("/api/health"),
+  signin: apiUrl("/api/signin"),
+  signup: apiUrl("/api/signup"),
+  addproducts: apiUrl("/api/addproducts"),
+  verifyListingPayment: apiUrl("/api/verify_listing_payment"),
+  mpesaPayment: apiUrl("/api/mpesa_payment"),
+  premiumPayment: apiUrl("/api/premium_payment"),
+  verifyPremiumPayment: apiUrl("/api/verify_premium_payment"),
+  cart: apiUrl("/api/cart"),
+  reservations: apiUrl("/api/reservations")
 };
 
 async function post(url, payload, config = {}) {

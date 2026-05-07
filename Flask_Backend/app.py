@@ -5,11 +5,16 @@ import json
 import datetime
 import sqlite3
 from flask_cors import CORS
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, resources={r"/api/*": {"origins": os.getenv("CORS_ORIGINS", "*").split(",")}})
 app.config["UPLOAD_FOLDER"] = "static/images"
 DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SQLITE_DB_PATH = os.getenv("SQLITE_DB_PATH", os.path.join(BASE_DIR, "kenyahouselistings.db"))
 SQLITE_READY = False
 
 
@@ -78,7 +83,8 @@ def get_mysql_connection():
 
 def get_sqlite_connection():
     try:
-        connection = sqlite3.connect('kenyahouselistings.db')
+        os.makedirs(os.path.dirname(SQLITE_DB_PATH), exist_ok=True)
+        connection = sqlite3.connect(SQLITE_DB_PATH)
         connection.row_factory = sqlite3.Row
         return connection
     except Exception as e:

@@ -493,7 +493,7 @@
 [data-theme="dark"] .home-page {
   background:
     radial-gradient(circle at top left, rgba(8, 145, 178, 0.16), transparent 30%),
-    linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    linear-gradient(180deg, #111827 0%, #1f2937 100%);
 }
 
 .property-card__notice {

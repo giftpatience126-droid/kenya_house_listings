@@ -8,26 +8,16 @@ export const checkApiStatus = async () => {
   };
 
   const endpoints = [
-    { name: 'signin', url: API_ENDPOINTS.signin, method: 'POST' },
-    { name: 'signup', url: API_ENDPOINTS.signup, method: 'POST' },
-    { name: 'addproducts', url: API_ENDPOINTS.addproducts, method: 'POST' },
-    { name: 'mpesaPayment', url: API_ENDPOINTS.mpesaPayment, method: 'POST' },
-    { name: 'premiumPayment', url: API_ENDPOINTS.premiumPayment, method: 'POST' },
-    { name: 'verifyListingPayment', url: API_ENDPOINTS.verifyListingPayment, method: 'POST' },
-    { name: 'verifyPremiumPayment', url: API_ENDPOINTS.verifyPremiumPayment, method: 'POST' },
-    { name: 'cart', url: API_ENDPOINTS.cart, method: 'POST' },
-    { name: 'reservations', url: API_ENDPOINTS.reservations, method: 'POST' }
+    { name: 'health', url: API_ENDPOINTS.health }
   ];
 
   let workingCount = 0;
-  let totalCount = endpoints.length;
+  const totalCount = endpoints.length;
 
   for (const endpoint of endpoints) {
     try {
-      // Try a simple ping to check if endpoint exists
       const response = await fetch(endpoint.url, {
-        method: 'HEAD',
-        mode: 'cors',
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json'
         }
@@ -51,8 +41,11 @@ export const checkApiStatus = async () => {
     }
   }
 
-  status.overall = workingCount === totalCount ? 'all_working' : 
-                   workingCount > 0 ? 'partial' : 'none_working';
+  status.overall = workingCount === totalCount
+    ? 'all_working'
+    : workingCount > 0
+      ? 'partial'
+      : 'none_working';
   status.workingCount = workingCount;
   status.totalCount = totalCount;
 
@@ -64,13 +57,13 @@ export const getApiHealthMessage = (status) => {
 
   switch (overall) {
     case 'all_working':
-      return '✅ All APIs are working properly';
+      return 'All APIs are reachable';
     case 'partial':
-      return `⚠️ ${workingCount}/${totalCount} APIs working. Some features may be limited`;
+      return `${workingCount}/${totalCount} API checks passed. Some features may be limited`;
     case 'none_working':
-      return '❌ No APIs are reachable. Using local fallbacks only';
+      return 'No APIs are reachable. Using local fallbacks only';
     default:
-      return '🔍 Checking API status...';
+      return 'Checking API status...';
   }
 };
 
@@ -84,7 +77,6 @@ export const testPaymentFlow = async () => {
   };
 
   try {
-    // Test M-Pesa payment
     const { mpesaPaymentApi } = await import('./api');
     await mpesaPaymentApi({
       phone: '254700000000',
@@ -99,7 +91,6 @@ export const testPaymentFlow = async () => {
   }
 
   try {
-    // Test premium payment
     const { premiumPaymentApi } = await import('./api');
     await premiumPaymentApi({
       phone: '254700000000',
@@ -112,7 +103,6 @@ export const testPaymentFlow = async () => {
   }
 
   try {
-    // Test cart sync
     const { saveCartApi } = await import('./api');
     await saveCartApi({
       buyerEmail: 'test@example.com',
@@ -125,7 +115,6 @@ export const testPaymentFlow = async () => {
   }
 
   try {
-    // Test reservation sync
     const { createReservationApi } = await import('./api');
     await createReservationApi({
       buyerName: 'Test User',
