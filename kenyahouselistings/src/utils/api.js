@@ -1,7 +1,9 @@
 import axios from "axios";
 import { buildSessionFromUser, findUserByEmail, saveUser } from "./auth";
 
-const API_ORIGIN = (process.env.REACT_APP_API_ORIGIN || "").replace(/\/$/, "");
+const DEFAULT_PRODUCTION_API_ORIGIN = "https://kenya-house-listings-api.vercel.app";
+const configuredApiOrigin = process.env.REACT_APP_API_ORIGIN || "";
+const API_ORIGIN = (configuredApiOrigin || DEFAULT_PRODUCTION_API_ORIGIN).replace(/\/$/, "");
 const apiUrl = (path) => `${API_ORIGIN}${path}`;
 
 // Configure axios defaults for better CORS handling
@@ -55,7 +57,7 @@ export function getFriendlyApiErrorMessage(error, fallback = "Service temporaril
   }
 
   if (error?.status === 405) {
-    return "That backend endpoint is rejecting this request method right now.";
+    return "The request reached the wrong app or route. Check that the frontend API URL points to the backend Vercel project.";
   }
 
   if (error?.isNetworkError) {
