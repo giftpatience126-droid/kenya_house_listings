@@ -70,6 +70,7 @@ export const buildSessionFromUser = (user) => ({
   sellerAdminPassword: user.sellerAdminPassword || "",
   sellerCode: user.sellerCode || "",
   hasPaidListingFee: user.hasPaidListingFee === true,
+  hasPaidPremiumFee: user.hasPaidPremiumFee === true,
   premiumActivatedAt: user.premiumActivatedAt || "",
   premiumTransactionId: user.premiumTransactionId || ""
 });

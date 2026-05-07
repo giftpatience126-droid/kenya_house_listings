@@ -1,6 +1,6 @@
 .premium-payment-page {
   min-height: 100vh;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--gradient-primary);
   padding: 20px;
 }
 
@@ -10,9 +10,11 @@
 }
 
 .premium-payment-container {
-  background: white;
+  background: var(--surface-bg);
+  color: var(--page-text);
   border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--surface-border);
+  box-shadow: var(--card-shadow);
   overflow: hidden;
 }
 
@@ -46,7 +48,8 @@
   align-items: center;
   gap: 15px;
   padding: 15px;
-  background: #f8f9fa;
+  background: var(--solid-surface-bg);
+  border: 1px solid var(--surface-border);
   border-radius: 8px;
 }
 
@@ -57,7 +60,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
+  background: var(--surface-bg);
   border-radius: 50%;
 }
 
@@ -65,13 +68,13 @@
   margin: 0 0 5px 0;
   font-size: 16px;
   font-weight: 600;
-  color: #333;
+  color: var(--page-text);
 }
 
 .benefit-item p {
   margin: 0;
   font-size: 14px;
-  color: #666;
+  color: var(--muted-text);
 }
 
 .premium-payment-section {
@@ -86,7 +89,7 @@
 .payment-info h2 {
   margin: 0 0 10px 0;
   font-size: 24px;
-  color: #333;
+  color: var(--page-text);
 }
 
 .payment-info .price {
@@ -99,12 +102,12 @@
 .payment-info .price span {
   font-size: 16px;
   font-weight: 400;
-  color: #666;
+  color: var(--muted-text);
 }
 
 .payment-info p {
   margin: 10px 0 0 0;
-  color: #666;
+  color: var(--muted-text);
 }
 
 .error-message {
@@ -131,16 +134,16 @@
 }
 
 .payment-option {
-  background: #f8f9fa;
+  background: var(--solid-surface-bg);
   padding: 20px;
   border-radius: 8px;
-  border: 1px solid #dee2e6;
+  border: 1px solid var(--surface-border);
 }
 
 .payment-option h3 {
   margin: 0 0 15px 0;
   font-size: 18px;
-  color: #333;
+  color: var(--page-text);
 }
 
 .payment-button,
@@ -178,7 +181,9 @@
 .transaction-input {
   flex: 1;
   padding: 12px;
-  border: 1px solid #ced4da;
+  border: 1px solid var(--surface-border);
+  background: var(--input-bg);
+  color: var(--page-text);
   border-radius: 6px;
   font-size: 16px;
 }
@@ -207,7 +212,7 @@
 .premium-payment-footer {
   padding: 20px;
   text-align: center;
-  border-top: 1px solid #dee2e6;
+  border-top: 1px solid var(--surface-border);
 }
 
 .back-button {
@@ -223,55 +228,6 @@
 
 .back-button:hover {
   background: #5a6268;
-}
-
-/* Dark mode styles */
-[data-theme="dark"] .premium-payment-page {
-  background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-}
-
-[data-theme="dark"] .premium-payment-container {
-  background: #2d3748;
-  color: white;
-}
-
-[data-theme="dark"] .benefit-item {
-  background: #4a5568;
-}
-
-[data-theme="dark"] .benefit-item h3 {
-  color: white;
-}
-
-[data-theme="dark"] .benefit-item p {
-  color: #cbd5e0;
-}
-
-[data-theme="dark"] .payment-info h2 {
-  color: white;
-}
-
-[data-theme="dark"] .payment-option {
-  background: #4a5568;
-  border-color: #718096;
-}
-
-[data-theme="dark"] .payment-option h3 {
-  color: white;
-}
-
-[data-theme="dark"] .transaction-input {
-  background: #4a5568;
-  border-color: #718096;
-  color: white;
-}
-
-[data-theme="dark"] .transaction-input:focus {
-  border-color: #667eea;
-}
-
-[data-theme="dark"] .premium-payment-footer {
-  border-color: #718096;
 }
 
 /* Responsive design */

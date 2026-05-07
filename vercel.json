@@ -1,19 +1,11 @@
 {
   "version": 2,
-  "builds": [
+  "buildCommand": "cd kenyahouselistings && npm install && npm run build",
+  "outputDirectory": "kenyahouselistings/build",
+  "rewrites": [
     {
-      "src": "kenyahouselistings/package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "buildCommand": "cd kenyahouselistings && npm install && npm run build",
-        "outputDirectory": "kenyahouselistings/build"
-      }
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/kenyahouselistings/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

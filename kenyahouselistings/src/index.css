@@ -3,6 +3,7 @@ html {
   --page-bg: #f8fafc;
   --page-text: #0f172a;
   --surface-bg: rgba(255, 255, 255, 0.88);
+  --solid-surface-bg: #ffffff;
   --surface-border: rgba(148, 163, 184, 0.16);
   --muted-text: #64748b;
   --card-shadow: 0 24px 52px rgba(15, 23, 42, 0.08);
@@ -26,12 +27,14 @@ html {
   --overlay: rgba(0, 0, 0, 0.1);
   --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --soft-page-bg: linear-gradient(180deg, #f7fbff 0%, #edf4f7 100%);
 }
 
 [data-theme="dark"] {
   --page-bg: #020617;
   --page-text: #e2e8f0;
   --surface-bg: rgba(15, 23, 42, 0.88);
+  --solid-surface-bg: #0f172a;
   --surface-border: rgba(71, 85, 105, 0.45);
   --muted-text: #94a3b8;
   --card-shadow: 0 24px 52px rgba(2, 6, 23, 0.42);
@@ -53,8 +56,9 @@ html {
   --auth-bg: #1f2937;
   --card-bg: #1f2937;
   --overlay: rgba(0, 0, 0, 0.3);
-  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  --gradient-secondary: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  --gradient-primary: linear-gradient(135deg, #020617 0%, #0f172a 100%);
+  --gradient-secondary: linear-gradient(135deg, #020617 0%, #111827 100%);
+  --soft-page-bg: linear-gradient(180deg, #020617 0%, #0f172a 100%);
 }
 
 input {
@@ -94,6 +98,18 @@ img {
 
 input, button {
   font: inherit;
+}
+
+input,
+select,
+textarea {
+  background: var(--input-bg);
+  color: var(--page-text);
+}
+
+[data-theme="dark"] option {
+  background: #0f172a;
+  color: #e2e8f0;
 }
 
 ::placeholder {

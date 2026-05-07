@@ -39,7 +39,7 @@ function PremiumPayment() {
         phone: session.phone,
         amount: PREMIUM_FEE
       });
-      setPaymentStatus('Ksh 100 M-Pesa prompt sent. Complete it on your phone.');
+      setPaymentStatus(`Ksh 100 M-Pesa prompt sent to ${session.phone}. Complete it on your phone, then enter the transaction ID below.`);
     } catch (apiError) {
       setError(apiError.message || 'Failed to send payment prompt');
       setPaymentStatus('');

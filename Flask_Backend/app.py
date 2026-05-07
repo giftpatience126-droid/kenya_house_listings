@@ -9,6 +9,8 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 app.config["UPLOAD_FOLDER"] = "static/images"
+DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
+SQLITE_READY = False
 
 
 def get_request_data():
@@ -36,9 +38,23 @@ def parse_json_field(value, default):
         return default
 
 
+def row_to_dict(row):
+    if row is None:
+        return None
+
+    if isinstance(row, dict):
+        return row
+
+    return dict(row)
+
+
+def rows_to_dicts(rows):
+    return [row_to_dict(row) for row in rows]
+
+
 def get_db_connection():
     # Check if SQLite is preferred
-    if os.getenv("DB_TYPE") == "sqlite":
+    if DB_TYPE == "sqlite":
         return get_sqlite_connection()
     
     # Default to MySQL
@@ -151,13 +167,21 @@ def init_sqlite_db():
     conn.close()
 
 
+@app.before_request
+def ensure_sqlite_ready():
+    global SQLITE_READY
+    if DB_TYPE == "sqlite" and not SQLITE_READY:
+        init_sqlite_db()
+        SQLITE_READY = True
+
+
 # Root route for Render health check
 @app.route('/')
 def root():
     return jsonify({
         'message': 'Kenya House Listings API',
         'status': 'running',
-        'database': 'MySQL' if os.getenv("DB_TYPE") != "sqlite" else 'SQLite',
+        'database': 'MySQL' if DB_TYPE != "sqlite" else 'SQLite',
         'endpoints': [
             '/api/health',
             '/api/signin',
@@ -180,7 +204,7 @@ def health_check():
         'status': 'healthy',
         'service': 'Kenya House Listings API',
         'version': '1.0.0',
-        'database': 'MySQL' if os.getenv("DB_TYPE") != "sqlite" else 'SQLite',
+        'database': 'MySQL' if DB_TYPE != "sqlite" else 'SQLite',
         'timestamp': datetime.datetime.now().isoformat(),
         'endpoints': [
             '/api/signin',
@@ -208,7 +232,7 @@ def signin():
 
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
             user = cursor.fetchone()
@@ -216,6 +240,8 @@ def signin():
             cursor = connection.cursor(pymysql.cursors.DictCursor)
             cursor.execute("SELECT * FROM users WHERE email = %s", (email,))
             user = cursor.fetchone()
+
+        user = row_to_dict(user)
 
         if user and password == user["password"]:
             return jsonify({
@@ -242,19 +268,19 @@ def signin():
 def signup():
     try:
         data = get_request_data()
-        name = get_request_value(data, "name")
+        name = get_request_value(data, "name", "username")
         email = get_request_value(data, "email")
         phone = get_request_value(data, "phone")
         password = get_request_value(data, "password")
-        role = get_request_value(data, "role", "buyer")
-        plan = get_request_value(data, "plan", "free")
+        role = get_request_value(data, "role", default="buyer")
+        plan = get_request_value(data, "plan", default="free")
 
         if not all([name, email, phone, password]):
             return jsonify({"error": "All fields are required"}), 400
 
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
             existing_user = cursor.fetchone()
@@ -266,7 +292,7 @@ def signup():
         if existing_user:
             return jsonify({"error": "User with this email already exists"}), 400
 
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor.execute(
                 "INSERT INTO users (name, email, phone, password, role, plan) VALUES (?, ?, ?, ?, ?, ?)",
                 (name, email, phone, password, role, plan)
@@ -308,15 +334,16 @@ def addproducts():
         
         product_name = get_request_value(data, "product_name")
         product_description = get_request_value(data, "product_description")
-        price = get_request_value(data, "price")
+        price = get_request_value(data, "price", "product_cost")
         location = get_request_value(data, "location")
         category = get_request_value(data, "category")
-        guests = get_request_value(data, "guests", "1")
-        bedrooms = get_request_value(data, "bedrooms", "1")
-        bathrooms = get_request_value(data, "bathrooms", "1")
+        guests = get_request_value(data, "guests", default="1")
+        bedrooms = get_request_value(data, "bedrooms", default="1")
+        bathrooms = get_request_value(data, "bathrooms", default="1")
         
         amenities = parse_json_field(get_request_value(data, "amenities"), [])
-        images = parse_json_field(get_request_value(data, "images"), [])
+        image_url = get_request_value(data, "product_photo_url", "imageUrl")
+        images = parse_json_field(get_request_value(data, "images"), [image_url] if image_url else [])
         availability = parse_json_field(get_request_value(data, "availability"), {})
         booking_contact = get_request_value(data, "booking_contact", seller_phone)
 
@@ -325,14 +352,14 @@ def addproducts():
 
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute('''
                 INSERT INTO product_details 
                 (seller_email, seller_name, seller_phone, product_name, product_description, 
                  price, location, category, guests, bedrooms, bathrooms, 
                  amenities, images, availability, booking_contact)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                 (
                     seller_email, seller_name, seller_phone, product_name, product_description,
@@ -348,7 +375,7 @@ def addproducts():
                 (seller_email, seller_name, seller_phone, product_name, product_description, 
                  price, location, category, guests, bedrooms, bathrooms, 
                  amenities, images, availability, booking_contact)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     seller_email, seller_name, seller_phone, product_name, product_description,
@@ -391,7 +418,7 @@ def save_cart():
 
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute(
                 "INSERT INTO cart (buyer_email, buyer_name, items, item_count) VALUES (?, ?, ?, ?)",
@@ -433,13 +460,19 @@ def create_reservation():
         listing_id = get_request_value(data, "listing_id")
         listing_title = get_request_value(data, "listing_title")
         listing_price = get_request_value(data, "listing_price")
-        guests = get_request_value(data, "guests", "1")
-        reservation_date = get_request_value(data, "reservation_date")
-        notes = get_request_value(data, "notes", "")
-        payment_method = get_request_value(data, "payment_method", "mpesa")
-        amount = get_request_value(data, "amount", "0")
+        guests = get_request_value(data, "guests", default="1")
+        reservation_date = get_request_value(data, "reservation_date", default=datetime.date.today().isoformat())
+        notes = get_request_value(data, "notes", default="")
+        payment_method = get_request_value(data, "payment_method", default="mpesa")
+        amount = get_request_value(data, "amount", default="0")
         payment_details = parse_json_field(get_request_value(data, "payment_details"), {})
         items = parse_json_field(get_request_value(data, "items"), [])
+
+        first_item = items[0] if isinstance(items, list) and items else {}
+        seller_email = seller_email or first_item.get("sellerEmail") or first_item.get("seller_email")
+        listing_id = listing_id or first_item.get("id") or first_item.get("listingId")
+        listing_title = listing_title or first_item.get("title") or first_item.get("listingTitle") or "Reservation"
+        listing_price = listing_price or first_item.get("price") or first_item.get("listingPrice") or amount
 
         if not all([buyer_name, buyer_email, seller_email, listing_id]):
             return jsonify({"error": "Required fields missing"}), 400
@@ -448,14 +481,14 @@ def create_reservation():
         
         reservation_id = f"RES-{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute('''
                 INSERT INTO reservations 
                 (reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
                  listing_id, listing_title, listing_price, guests, reservation_date,
                  notes, payment_method, amount, payment_details, items)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''',
                 (
                     reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
@@ -471,7 +504,7 @@ def create_reservation():
                 (reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
                  listing_id, listing_title, listing_price, guests, reservation_date,
                  notes, payment_method, amount, payment_details, items)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 """,
                 (
                     reservation_id, buyer_name, buyer_email, buyer_phone, seller_email,
@@ -518,7 +551,7 @@ def premium_payment():
     try:
         data = get_request_data()
         email = get_request_value(data, "email")
-        transaction_id = get_request_value(data, "transactionId")
+        transaction_id = get_request_value(data, "transactionId", "transaction_id")
         phone = get_request_value(data, "phone")
         amount = get_request_value(data, "amount", "100")
 
@@ -538,7 +571,7 @@ def verify_premium_payment():
     try:
         data = get_request_data()
         email = get_request_value(data, "email")
-        transaction_id = get_request_value(data, "transactionId")
+        transaction_id = get_request_value(data, "transactionId", "transaction_id")
         phone = get_request_value(data, "phone")
         amount = get_request_value(data, "amount", "100")
 
@@ -575,7 +608,7 @@ def get_dashboard_stats(email):
     try:
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute("SELECT COUNT(*) as listings_count FROM product_details WHERE seller_email = ?", (email,))
             listings_count = cursor.fetchone()[0]
@@ -615,7 +648,7 @@ def get_user_listings(email):
     try:
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute("SELECT * FROM product_details WHERE seller_email = ? ORDER BY created_at DESC", (email,))
             listings = cursor.fetchall()
@@ -624,7 +657,7 @@ def get_user_listings(email):
             cursor.execute("SELECT * FROM product_details WHERE seller_email = %s ORDER BY created_at DESC", (email,))
             listings = cursor.fetchall()
         
-        return jsonify(listings)
+        return jsonify(rows_to_dicts(listings))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -637,7 +670,7 @@ def get_user_reservations(email):
     try:
         connection = get_db_connection()
         
-        if os.getenv("DB_TYPE") == "sqlite":
+        if DB_TYPE == "sqlite":
             cursor = connection.cursor()
             cursor.execute("SELECT * FROM reservations WHERE seller_email = ? ORDER BY created_at DESC", (email,))
             reservations = cursor.fetchall()
@@ -646,7 +679,7 @@ def get_user_reservations(email):
             cursor.execute("SELECT * FROM reservations WHERE seller_email = %s ORDER BY created_at DESC", (email,))
             reservations = cursor.fetchall()
         
-        return jsonify(reservations)
+        return jsonify(rows_to_dicts(reservations))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -662,52 +695,95 @@ from requests.auth import HTTPBasicAuth
 @app.route('/api/mpesa_payment', methods=['POST'])
 def mpesa_payment():
     try:
-        amount = request.form.get('amount', '1')
-        phone = request.form.get('phone') or request.form.get('phone_number')
-        
-        # Get access token
+        data = get_request_data()
+        amount = get_request_value(data, "amount", default="1")
+        phone = get_request_value(data, "phone", "phone_number")
+        account_reference = get_request_value(data, "account_reference", default="Kenya House Listings")
+        transaction_desc = get_request_value(data, "transaction_desc", default="Kenya House Listings payment")
+
+        if not phone:
+            return jsonify({"error": "Phone number is required", "prompt_sent": False}), 400
+
+        consumer_key = os.getenv("MPESA_CONSUMER_KEY")
+        consumer_secret = os.getenv("MPESA_CONSUMER_SECRET")
+        shortcode = os.getenv("MPESA_SHORTCODE", "174379")
+        passkey = os.getenv("MPESA_PASSKEY")
+        callback_url = os.getenv("MPESA_CALLBACK_URL")
+
+        if not all([consumer_key, consumer_secret, shortcode, passkey, callback_url]):
+            # Mock M-Pesa service for local development
+            mock_checkout_id = f"MOCK_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+            return jsonify({
+                "message": "M-Pesa prompt sent to your phone (mock mode)",
+                "prompt_sent": True,
+                "checkout_request_id": mock_checkout_id,
+                "merchant_request_id": f"MOCK_MERCHANT_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
+                "mpesa_response": {
+                    "ResponseCode": "0",
+                    "ResponseDescription": "Success - Mock service for local development",
+                    "CheckoutRequestID": mock_checkout_id
+                }
+            })
+
         auth_response = requests.get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-            auth=HTTPBasicAuth("GTWADFxIpUfDoNikNGqq1C3023evM6UH", "amFbAoUByPV2rM5A")
+            auth=HTTPBasicAuth(consumer_key, consumer_secret),
+            timeout=20
         )
+        auth_response.raise_for_status()
         access_token = "Bearer " + auth_response.json()['access_token']
         
-        # Generate password
         timestamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
-        password_data = "174379bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919" + timestamp
+        password_data = shortcode + passkey + timestamp
         password = base64.b64encode(password_data.encode()).decode()
         
-        # STK Push payload
         payload = {
-            "BusinessShortCode": "174379",
+            "BusinessShortCode": shortcode,
             "Password": password,
             "Timestamp": timestamp,
             "TransactionType": "CustomerPayBillOnline",
             "Amount": amount,
             "PartyA": phone,
-            "PartyB": "174379",
+            "PartyB": shortcode,
             "PhoneNumber": phone,
-            "CallBackURL": "https://coding.co.ke/api/confirm.php",
-            "AccountReference": "Kenya House Listings",
-            "TransactionDesc": "Payments for Products"
+            "CallBackURL": callback_url,
+            "AccountReference": account_reference,
+            "TransactionDesc": transaction_desc
         }
         
-        # Send STK Push
         response = requests.post(
             "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
             json=payload,
-            headers={"Authorization": access_token, "Content-Type": "application/json"}
+            headers={"Authorization": access_token, "Content-Type": "application/json"},
+            timeout=20
         )
+        response_data = response.json()
+        if not response.ok or str(response_data.get("ResponseCode")) != "0":
+            return jsonify({
+                "error": response_data.get("errorMessage") or response_data.get("ResponseDescription") or "M-Pesa prompt was not accepted.",
+                "prompt_sent": False,
+                "mpesa_response": response_data
+            }), 502
         
-        return jsonify({"message": "M-Pesa prompt sent to your phone"})
+        return jsonify({
+            "message": "M-Pesa prompt sent to your phone",
+            "prompt_sent": True,
+            "checkout_request_id": response_data.get("CheckoutRequestID"),
+            "merchant_request_id": response_data.get("MerchantRequestID"),
+            "mpesa_response": response_data
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "error": f"M-Pesa prompt failed: {str(e)}",
+            "prompt_sent": False
+        }), 503
 
 
 if __name__ == "__main__":
     # Initialize SQLite database if needed
-    if os.getenv("DB_TYPE") == "sqlite":
+    if DB_TYPE == "sqlite":
         init_sqlite_db()
     
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+

@@ -5,6 +5,7 @@ import {
   getFriendlyApiErrorMessage,
   isRecoverableApiError,
   mpesaPaymentApi,
+  verifyListingPaymentApi,
   saveCartApi
 } from "../utils/api";
 import { getSession } from "../utils/auth";
@@ -19,7 +20,7 @@ function Checkout() {
   const [form, setForm] = useState({
     fullName: session?.name || "",
     email: session?.email || "",
-    phone: "",
+    phone: session?.phone || "",
     guests: "1",
     reservationDate: "",
     notes: "",
@@ -34,6 +35,9 @@ function Checkout() {
     expiry: "",
     cvv: ""
   });
+  const [transactionId, setTransactionId] = useState("");
+  const [paymentVerified, setPaymentVerified] = useState(false);
+  const [promptSent, setPromptSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -113,7 +117,7 @@ function Checkout() {
         }
       }
 
-      if (form.paymentMethod === "mpesa") {
+      if (form.paymentMethod === "mpesa" && !paymentVerified) {
         setStatus("Sending M-Pesa prompt...");
         try {
           await mpesaPaymentApi({
@@ -123,13 +127,12 @@ function Checkout() {
             account_reference: items[0]?.title || "Reservation",
             transaction_desc: `Reservation for ${items.length} listing(s)`
           });
-          setStatus(`M-Pesa prompt sent to ${mpesaPhone}. Complete it on your phone.`);
+          setPromptSent(true);
+          setStatus(`M-Pesa prompt sent to ${mpesaPhone}. Complete it on your phone, then enter the transaction ID to place the reservation.`);
+          setLoading(false);
+          return;
         } catch (apiError) {
-          if (isRecoverableApiError(apiError)) {
-            syncWarnings.push("M-Pesa prompt service is temporarily unavailable, so no phone prompt was sent.");
-          } else {
-            throw apiError;
-          }
+          throw apiError;
         }
       }
 
@@ -186,6 +189,35 @@ function Checkout() {
     );
     setStatus("");
     setLoading(false);
+  };
+
+  const handleVerifyPayment = async () => {
+    const mpesaPhone = normalizeKenyanPhone(form.mpesaPhone || form.phone);
+
+    if (!transactionId.trim()) {
+      setError("Enter the M-Pesa transaction ID after completing the phone prompt.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setStatus("Verifying payment...");
+
+    try {
+      await verifyListingPaymentApi({
+        email: form.email,
+        transactionId,
+        phone: mpesaPhone,
+        amount: totalValue
+      });
+      setPaymentVerified(true);
+      setStatus("Payment verified. Submit again to place the reservation.");
+    } catch (apiError) {
+      setStatus("");
+      setError(getFriendlyApiErrorMessage(apiError, "Payment verification failed."));
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!session) {
@@ -353,8 +385,27 @@ function Checkout() {
                       placeholder="07XXXXXXXX or 2547XXXXXXXX"
                     />
                     <p className="checkout-form-card__hint">
-                      We will send the M-Pesa prompt to this number after you submit the reservation.
+                      The reservation is placed only after you complete and verify the M-Pesa prompt.
                     </p>
+                    {(promptSent || status.includes("prompt sent")) && !paymentVerified && (
+                      <div className="checkout-form-card__verify">
+                        <label htmlFor="mpesa-transaction-id">M-Pesa transaction ID</label>
+                        <input
+                          id="mpesa-transaction-id"
+                          value={transactionId}
+                          onChange={(event) => setTransactionId(event.target.value)}
+                          placeholder="e.g. QAB12CDE34"
+                        />
+                        <button type="button" onClick={handleVerifyPayment} disabled={loading}>
+                          {loading ? "Verifying..." : "Verify Payment"}
+                        </button>
+                      </div>
+                    )}
+                    {paymentVerified && (
+                      <div className="checkout-form-card__status">
+                        Payment verified. You can now submit the reservation.
+                      </div>
+                    )}
                   </>
                 )}
 
@@ -449,7 +500,11 @@ function Checkout() {
                 />
 
                 <button type="submit" disabled={loading}>
-                  {loading ? "Sending reservation..." : "Submit Reservation"}
+                  {loading
+                    ? "Processing..."
+                    : form.paymentMethod === "mpesa" && !paymentVerified
+                      ? "Send M-Pesa Prompt"
+                      : "Submit Reservation"}
                 </button>
               </form>
             </section>

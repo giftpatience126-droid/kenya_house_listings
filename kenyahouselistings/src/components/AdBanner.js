@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { activatePremiumForEmail, isPremiumSession, getSession } from '../utils/auth';
-import { isRecoverableApiError, mpesaPaymentApi } from '../utils/api';
+import { isPremiumSession, getSession } from '../utils/auth';
+import { mpesaPaymentApi } from '../utils/api';
 import './AdBanner.css';
 
 const AdBanner = ({ position = 'top' }) => {
@@ -18,7 +18,7 @@ const AdBanner = ({ position = 'top' }) => {
   const adContent = {
     top: {
       title: "🎯 Upgrade to Premium",
-      description: "Get ad-free browsing, dark mode, and exclusive features for just Ksh 100/month",
+      description: "Pay Ksh 100 and an M-Pesa prompt will be sent to the phone number you signed up with.",
       cta: "Upgrade Now"
     },
     side: {
@@ -52,7 +52,7 @@ const AdBanner = ({ position = 'top' }) => {
       return;
     }
 
-    setStatus("Sending Ksh 100 M-Pesa prompt for Premium...");
+    setStatus(`Sending Ksh 100 M-Pesa prompt to ${session.phone}...`);
 
     try {
       await mpesaPaymentApi({
@@ -63,18 +63,12 @@ const AdBanner = ({ position = 'top' }) => {
         transaction_desc: "Kenya House Listings Premium upgrade"
       });
     } catch (error) {
-      if (!isRecoverableApiError(error)) {
-        setStatus(error.message || "Premium payment failed.");
-        return;
-      }
+      setStatus(error.message || "Premium payment prompt could not be sent.");
+      return;
     }
 
-    activatePremiumForEmail(session.email, {
-      transactionId: `UPGRADE-${Date.now()}`,
-      activatedAt: new Date().toISOString()
-    });
-    setStatus("Premium activated. Ads have been removed from your account.");
-    navigate("/dashboard");
+    setStatus("Prompt sent. Complete payment on your phone, then verify it from the Premium page.");
+    navigate("/premium-payment");
   };
 
   return (
@@ -85,8 +79,8 @@ const AdBanner = ({ position = 'top' }) => {
           <p className="ad-banner__description">{ad.description}</p>
           {status && <p className="ad-banner__status">{status}</p>}
         </div>
-        <button className="ad-banner__cta" onClick={handleClick} disabled={canUpgrade && !session?.phone}>
-          {canUpgrade && !session?.phone ? "Add Phone First" : ad.cta}
+        <button className="ad-banner__cta" onClick={handleClick}>
+          {canUpgrade && !session?.phone ? "Use Signup Phone" : ad.cta}
         </button>
       </div>
       <span className="ad-banner__label">Advertisement</span>

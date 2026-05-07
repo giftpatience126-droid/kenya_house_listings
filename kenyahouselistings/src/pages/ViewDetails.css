@@ -5,7 +5,7 @@
   padding: 32px 20px 40px;
   background:
     radial-gradient(circle at top right, rgba(14, 116, 144, 0.16), transparent 32%),
-    linear-gradient(180deg, #f7fbff 0%, #eef4f7 100%);
+    var(--soft-page-bg);
 }
 
 .view-details-page__glow {
@@ -44,8 +44,8 @@
 .view-details-media-card,
 .view-details-info-card,
 .view-details-message-card {
-  border: 1px solid rgba(148, 163, 184, 0.16);
-  background: rgba(255, 255, 255, 0.84);
+  border: 1px solid var(--surface-border);
+  background: var(--surface-bg);
   backdrop-filter: blur(12px);
   box-shadow: 0 24px 52px rgba(15, 23, 42, 0.08);
   border-radius: 28px;
@@ -66,7 +66,7 @@
 
 .view-details-header h1 {
   margin: 0;
-  color: #0f172a;
+  color: var(--page-text);
   font-size: clamp(1.8rem, 3vw, 2.8rem);
   line-height: 1.05;
   letter-spacing: -0.04em;
@@ -74,7 +74,7 @@
 
 .view-details-header__copy {
   margin: 12px 0 0;
-  color: #475569;
+  color: var(--muted-text);
   line-height: 1.7;
 }
 
@@ -106,27 +106,27 @@
   justify-content: space-between;
   gap: 10px;
   padding: 12px 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--surface-border);
 }
 
 .view-details-info-row span {
-  color: #64748b;
+  color: var(--muted-text);
   font-weight: 600;
 }
 
 .view-details-info-row strong {
-  color: #0f172a;
+  color: var(--page-text);
 }
 
 .view-details-description h2 {
   margin: 18px 0 8px;
-  color: #0f172a;
+  color: var(--page-text);
   font-size: 1.15rem;
 }
 
 .view-details-description p {
   margin: 0;
-  color: #475569;
+  color: var(--muted-text);
   line-height: 1.7;
 }
 
@@ -189,7 +189,7 @@
 
 .view-details-message-card__header p {
   margin-top: 8px;
-  color: #64748b;
+  color: var(--muted-text);
 }
 
 .view-details-message-card__status {
@@ -210,13 +210,14 @@
 .view-details-thread__empty {
   border-radius: 18px;
   padding: 14px 16px;
-  background: #f8fafc;
+  background: var(--solid-surface-bg);
+  border: 1px solid var(--surface-border);
 }
 
 .view-details-thread__message p,
 .view-details-thread__empty {
   margin-top: 8px;
-  color: #475569;
+  color: var(--muted-text);
   line-height: 1.6;
 }
 
@@ -228,7 +229,9 @@
 
 .view-details-message-form textarea {
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.32);
+  border: 1px solid var(--surface-border);
+  background: var(--input-bg);
+  color: var(--page-text);
   border-radius: 16px;
   padding: 12px 14px;
   font: inherit;

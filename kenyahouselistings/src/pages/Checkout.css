@@ -1,7 +1,7 @@
 .checkout-page {
   min-height: 100vh;
   padding: 32px 20px 40px;
-  background: linear-gradient(180deg, #f7fbff 0%, #eef4f7 100%);
+  background: var(--soft-page-bg);
 }
 
 .checkout-shell {
@@ -16,10 +16,10 @@
 .checkout-form-card,
 .checkout-empty,
 .checkout-success {
-  border: 1px solid rgba(148, 163, 184, 0.16);
+  border: 1px solid var(--surface-border);
   border-radius: 24px;
-  background: rgba(255, 255, 255, 0.86);
-  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.08);
+  background: var(--surface-bg);
+  box-shadow: var(--card-shadow);
 }
 
 .checkout-header {
@@ -44,14 +44,14 @@
 .checkout-empty h2,
 .checkout-success h1 {
   margin: 0;
-  color: #0f172a;
+  color: var(--page-text);
 }
 
 .checkout-header p,
 .checkout-empty p,
 .checkout-success p {
   margin: 8px 0 0;
-  color: #475569;
+  color: var(--muted-text);
 }
 
 .checkout-header button,
@@ -100,7 +100,8 @@
   gap: 12px;
   border-radius: 14px;
   padding: 8px;
-  background: #f8fafc;
+  background: var(--solid-surface-bg);
+  border: 1px solid var(--surface-border);
 }
 
 .checkout-item img {
@@ -117,17 +118,17 @@
 }
 
 .checkout-item p {
-  color: #64748b;
+  color: var(--muted-text);
   font-size: 0.92rem;
 }
 
 .checkout-summary__total {
   margin-top: 14px;
   padding-top: 14px;
-  border-top: 1px solid rgba(148, 163, 184, 0.25);
+  border-top: 1px solid var(--surface-border);
   display: flex;
   justify-content: space-between;
-  color: #0f172a;
+  color: var(--page-text);
 }
 
 .checkout-form-card form {
@@ -137,7 +138,7 @@
 
 .checkout-form-card label {
   margin-top: 8px;
-  color: #334155;
+  color: var(--page-text);
   font-weight: 600;
 }
 
@@ -145,7 +146,7 @@
 .checkout-form-card select,
 .checkout-form-card textarea {
   width: 100%;
-  border: 1px solid rgba(148, 163, 184, 0.35);
+  border: 1px solid var(--surface-border);
   border-radius: 12px;
   padding: 10px 12px;
   font: inherit;
@@ -172,8 +173,14 @@
 
 .checkout-form-card__hint {
   margin: 4px 0 0;
-  color: #64748b;
+  color: var(--muted-text);
   font-size: 0.92rem;
+}
+
+.checkout-form-card__verify {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .checkout-empty,

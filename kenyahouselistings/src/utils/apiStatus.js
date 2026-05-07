@@ -1,4 +1,4 @@
-import { API_ENDPOINTS, post } from './api';
+import { API_ENDPOINTS } from './api';
 
 export const checkApiStatus = async () => {
   const status = {

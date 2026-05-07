@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import AdBanner from "../components/AdBanner";
 import { addProductApi, getFriendlyApiErrorMessage, isRecoverableApiError, mpesaPaymentApi, verifyListingPaymentApi } from "../utils/api";
-import { getSession, isPremiumSession, hasPaidListingFee, setListingFeePaid } from "../utils/auth";
+import { findUserByEmail, getSession, isPremiumSession, hasPaidListingFee, setListingFeePaid } from "../utils/auth";
 import { saveCustomListing } from "../utils/listings";
 import "./Auth.css";
 
@@ -16,7 +16,11 @@ const CATEGORY_OPTIONS = [
 
 function AddProperty() {
   const navigate = useNavigate();
-  const session = getSession();
+  const storedSession = getSession();
+  const storedUser = findUserByEmail(storedSession?.email);
+  const session = storedSession
+    ? { ...storedSession, phone: storedSession.phone || storedUser?.phone || "" }
+    : null;
   const [form, setForm] = useState({
     title: "",
     description: "",
@@ -48,7 +52,7 @@ function AddProperty() {
 
   const handleSendListingPrompt = async () => {
     if (!session?.phone) {
-      setError("Add a phone number to your account before requesting the listing payment prompt.");
+      setError("Your seller account does not have a saved phone number. Update the account or register again with a phone number.");
       return;
     }
 
@@ -66,12 +70,8 @@ function AddProperty() {
       });
       setPaymentStatus(`M-Pesa prompt sent to ${session.phone}. Complete it, then verify your transaction ID below.`);
     } catch (apiError) {
-      if (isRecoverableApiError(apiError)) {
-        setPaymentStatus("Payment service is temporarily unavailable. If you have already paid manually, verify your transaction ID below.");
-      } else {
-        setPaymentStatus("");
-        setError(getFriendlyApiErrorMessage(apiError, "Could not send the listing payment prompt."));
-      }
+      setPaymentStatus("");
+      setError(getFriendlyApiErrorMessage(apiError, "Could not send the listing payment prompt."));
     } finally {
       setSendingListingPrompt(false);
     }

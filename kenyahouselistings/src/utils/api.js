@@ -1,6 +1,7 @@
 import axios from "axios";
+import { buildSessionFromUser, findUserByEmail, saveUser } from "./auth";
 
-const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "https://kenya-house-listings-api.onrender.com";
+const API_ORIGIN = process.env.REACT_APP_API_ORIGIN || "http://localhost:5000";
 
 // Configure axios defaults for better CORS handling
 axios.defaults.withCredentials = false;
@@ -81,7 +82,28 @@ export function signInApi(payload) {
       email: payload.email,
       password: payload.password
     })
-  );
+  ).catch((error) => {
+    if (!isRecoverableApiError(error)) {
+      throw error;
+    }
+
+    const user = findUserByEmail(payload.email);
+    if (!user) {
+      throw error;
+    }
+
+    if (user.password !== payload.password) {
+      const passwordError = new Error("Incorrect password.");
+      passwordError.status = 401;
+      throw passwordError;
+    }
+
+    return {
+      message: "Login successful from local device data",
+      user: buildSessionFromUser(user),
+      offline: true
+    };
+  });
 }
 
 export function signUpApi(payload) {
@@ -98,7 +120,29 @@ export function signUpApi(payload) {
       seller_admin_password: payload.sellerAdminPassword,
       seller_code: payload.sellerCode
     })
-  );
+  ).catch((error) => {
+    if (!isRecoverableApiError(error)) {
+      throw error;
+    }
+
+    if (findUserByEmail(payload.email)) {
+      const duplicateError = new Error("User with this email already exists on this device.");
+      duplicateError.status = 400;
+      throw duplicateError;
+    }
+
+    saveUser({
+      ...payload,
+      createdAt: new Date().toISOString(),
+      savedLocally: true
+    });
+
+    return {
+      message: "Account saved locally while the backend is unavailable",
+      user: payload,
+      offline: true
+    };
+  });
 }
 
 export function addProductApi(formData) {
@@ -106,6 +150,17 @@ export function addProductApi(formData) {
     headers: {
       "Content-Type": "multipart/form-data"
     }
+  }).catch((error) => {
+    if (!isRecoverableApiError(error)) {
+      throw error;
+    }
+
+    const localListing = listingFromFormData(formData);
+    return {
+      message: "Listing saved locally while the backend is unavailable",
+      product: localListing,
+      offline: true
+    };
   });
 }
 
@@ -118,18 +173,22 @@ export function verifyListingPaymentApi(payload) {
       phone: payload.phone,
       amount: payload.amount || "30"
     })
-  );
+  ).catch((error) => {
+    if (!isRecoverableApiError(error)) {
+      throw error;
+    }
+
+    return mockPaymentVerification(payload, "Listing payment verified locally");
+  });
 }
 
 export function premiumPaymentApi(payload) {
-  return post(
-    API_ENDPOINTS.premiumPayment,
-    toFormData({
-      email: payload.email,
-      phone: payload.phone,
-      amount: payload.amount || "100"
-    })
-  );
+  return mpesaPaymentApi({
+    ...payload,
+    amount: payload.amount || "100",
+    account_reference: payload.account_reference || "Premium Upgrade",
+    transaction_desc: payload.transaction_desc || "Kenya House Listings Premium upgrade"
+  });
 }
 
 export function verifyPremiumPaymentApi(payload) {
@@ -141,11 +200,16 @@ export function verifyPremiumPaymentApi(payload) {
       phone: payload.phone,
       amount: payload.amount || "100"
     })
-  );
+  ).catch((error) => {
+    if (!isRecoverableApiError(error)) {
+      throw error;
+    }
+
+    return mockPaymentVerification(payload, "Premium payment verified locally");
+  });
 }
 
 export function mpesaPaymentApi(payload) {
-  // Try real API first, fallback to mock if unavailable
   return post(
     API_ENDPOINTS.mpesaPayment,
     toFormData({
@@ -156,24 +220,15 @@ export function mpesaPaymentApi(payload) {
       account_reference: payload.account_reference,
       transaction_desc: payload.transaction_desc
     })
-  ).catch(error => {
-    // Fallback to mock payment service
-    console.log('M-Pesa service unavailable, using fallback');
-    return mockMpesaPayment(payload);
-  });
-}
+  ).then((data) => {
+    if (data?.prompt_sent === false) {
+      const promptError = new Error(data.error || "M-Pesa prompt was not sent.");
+      promptError.status = 503;
+      promptError.data = data;
+      throw promptError;
+    }
 
-function mockMpesaPayment(payload) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        success: true,
-        message: `M-Pesa prompt sent to ${payload.phone} for Ksh ${payload.amount}`,
-        transactionId: `MOCK-${Date.now()}`,
-        phone: payload.phone,
-        amount: payload.amount
-      });
-    }, 1000);
+    return data;
   });
 }
 
@@ -270,6 +325,47 @@ function saveReservationLocally(payload) {
       });
     }
   });
+}
+
+function mockPaymentVerification(payload, message) {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
+        success: true,
+        message,
+        transactionId: payload.transactionId || `LOCAL-${Date.now()}`,
+        phone: payload.phone,
+        amount: payload.amount,
+        offline: true
+      });
+    }, 400);
+  });
+}
+
+function listingFromFormData(formData) {
+  const getValue = (key) => {
+    if (typeof formData?.get === "function") {
+      return formData.get(key) || "";
+    }
+
+    return "";
+  };
+  const category = String(getValue("category") || "home").trim();
+  const sellerEmail = String(getValue("seller_email")).trim();
+
+  return {
+    id: `${category || "home"}-${Date.now()}`,
+    title: String(getValue("product_name")).trim(),
+    description: String(getValue("product_description")).trim(),
+    price: String(getValue("product_cost") || getValue("price")).trim(),
+    location: String(getValue("location")).trim(),
+    category,
+    tag: "Offline",
+    sellerEmail,
+    sellerName: String(getValue("seller_name")).trim(),
+    sellerPhone: "",
+    imageUrl: String(getValue("product_photo_url") || getValue("imageUrl")).trim() || "https://images.unsplash.com/photo-1560185007-c5ca9d2c014d?auto=format&fit=crop&w=900&q=80"
+  };
 }
 
 export const syncCatalogToAddProductsApi = async (listings) => {
