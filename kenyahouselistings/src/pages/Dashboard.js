@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import ChatbotWidget from "../components/ChatbotWidget";
 import AdBanner from "../components/AdBanner";
 import { syncCatalogToAddProductsApi } from "../utils/api";
-import { checkApiStatus, getApiHealthMessage } from "../utils/apiStatus";
 import { clearSession, getSession, isPremiumSession } from "../utils/auth";
 import { getCartItems } from "../utils/cart";
 import { getUserConversations } from "../utils/messages";
@@ -16,8 +15,6 @@ function Dashboard() {
   const [session, setSession] = useState(() => getSession());
   const [syncStatus, setSyncStatus] = useState("");
   const [syncError, setSyncError] = useState("");
-  const [apiStatus, setApiStatus] = useState(null);
-  const [showApiStatus, setShowApiStatus] = useState(false);
 
   useEffect(() => {
     const refresh = () => setSession(getSession());
@@ -25,14 +22,6 @@ function Dashboard() {
     window.addEventListener("reservations:updated", refresh);
     window.addEventListener("listings:updated", refresh);
     window.addEventListener("messages:updated", refresh);
-
-    // Check API status on mount
-    checkApiStatus().then(status => {
-      setApiStatus(status);
-      if (status.overall !== 'all_working') {
-        setShowApiStatus(true);
-      }
-    });
 
     return () => {
       window.removeEventListener("auth:updated", refresh);
@@ -139,29 +128,6 @@ function Dashboard() {
 
         {syncStatus && <div className="dashboard-status dashboard-status--success">{syncStatus}</div>}
         {syncError && <div className="dashboard-status dashboard-status--error">{syncError}</div>}
-        
-        {showApiStatus && apiStatus && (
-          <div className="dashboard-status dashboard-status--info">
-            <div className="api-status-header">
-              <span>🔍 API Status</span>
-              <button 
-                type="button" 
-                onClick={() => setShowApiStatus(false)}
-                style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', marginLeft: '10px' }}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="api-status-message">
-              {getApiHealthMessage(apiStatus)}
-            </div>
-            <div className="api-status-details">
-              <small>
-                {apiStatus.workingCount}/{apiStatus.totalCount} APIs working
-              </small>
-            </div>
-          </div>
-        )}
 
         <section className="dashboard-grid">
           {stats.map((stat) => (
