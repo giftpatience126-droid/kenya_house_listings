@@ -28,36 +28,48 @@ function Login() {
     setLoading(true);
     setError("");
 
-    const localUser = findUserByEmail(form.email);
+    const email = form.email.trim().toLowerCase();
+    const localUser = findUserByEmail(email);
 
     try {
-      if (!localUser) {
-        await signInApi({
-          email: form.email,
-          password: form.password
-        });
+      const apiResult = await signInApi({
+        email,
+        password: form.password
+      });
+
+      const apiUser = apiResult?.user ? {
+        ...apiResult.user,
+        password: form.password
+      } : null;
+      const userToLogin = apiUser || localUser;
+
+      if (!userToLogin) {
+        setError("No account found with that email. Please register first.");
+        setLoading(false);
+        return;
       }
 
-      const fallbackUser = {
-        name: form.email.split("@")[0],
-        email: form.email,
-        role: localUser?.role || form.role,
-        phone: localUser?.phone || "",
-        plan: localUser?.plan || "free",
-        subscriptionStatus: localUser?.subscriptionStatus || "active",
-        sellerAdminPassword: localUser?.sellerAdminPassword || "",
-        sellerCode: localUser?.sellerCode || ""
+      if (localUser && !apiUser && localUser.password !== form.password) {
+        setError("Incorrect password.");
+        setLoading(false);
+        return;
+      }
+
+      const normalizedUser = {
+        ...userToLogin,
+        email,
+        role: userToLogin.role || form.role,
+        plan: userToLogin.plan || "free",
+        subscriptionStatus: userToLogin.subscriptionStatus || "active"
       };
 
-      const userToLogin = localUser || fallbackUser;
-
-      if (userToLogin.plan === "premium" && !userToLogin.premiumActivatedAt) {
+      if (normalizedUser.plan === "premium" && !normalizedUser.premiumActivatedAt) {
         setError("Premium accounts must complete the Ksh 100 payment before login.");
         setLoading(false);
         return;
       }
 
-      saveSession(buildSessionFromUser(userToLogin));
+      saveSession(buildSessionFromUser(normalizedUser));
       setLoading(false);
       navigate(redirectTo);
       return;

@@ -30,6 +30,10 @@ def get_request_value(data, *keys, default=None):
     return default
 
 
+def normalize_email(email):
+    return str(email or "").strip().lower()
+
+
 def parse_json_field(value, default):
     if value in (None, ""):
         return default
@@ -230,7 +234,7 @@ def health_check():
 def signin():
     try:
         data = get_request_data()
-        email = get_request_value(data, "email")
+        email = normalize_email(get_request_value(data, "email"))
         password = get_request_value(data, "password")
 
         if not email or not password:
@@ -249,7 +253,10 @@ def signin():
 
         user = row_to_dict(user)
 
-        if user and password == user["password"]:
+        if not user:
+            return jsonify({"error": "No account found with this email"}), 404
+
+        if password == user["password"]:
             return jsonify({
                 "message": "Login successful",
                 "user": {
@@ -261,7 +268,7 @@ def signin():
                 }
             })
 
-        return jsonify({"error": "Invalid credentials"}), 401
+        return jsonify({"error": "Incorrect password"}), 401
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -275,7 +282,7 @@ def signup():
     try:
         data = get_request_data()
         name = get_request_value(data, "name", "username")
-        email = get_request_value(data, "email")
+        email = normalize_email(get_request_value(data, "email"))
         phone = get_request_value(data, "phone")
         password = get_request_value(data, "password")
         role = get_request_value(data, "role", default="buyer")
@@ -698,6 +705,24 @@ import datetime
 import base64
 from requests.auth import HTTPBasicAuth
 
+
+def build_mock_mpesa_response(account_reference):
+    mock_checkout_id = f"MOCK_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
+    return jsonify({
+        "message": "M-Pesa prompt sent to your phone (mock mode)",
+        "prompt_sent": True,
+        "checkout_request_id": mock_checkout_id,
+        "merchant_request_id": f"MOCK_MERCHANT_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
+        "mode": "mock",
+        "account_reference": account_reference,
+        "mpesa_response": {
+            "ResponseCode": "0",
+            "ResponseDescription": "Success - Mock service for testing",
+            "CheckoutRequestID": mock_checkout_id
+        }
+    })
+
+
 @app.route('/api/mpesa_payment', methods=['POST'])
 def mpesa_payment():
     try:
@@ -715,27 +740,19 @@ def mpesa_payment():
         shortcode = os.getenv("MPESA_SHORTCODE", "174379")
         passkey = os.getenv("MPESA_PASSKEY")
         callback_url = os.getenv("MPESA_CALLBACK_URL")
+        use_real_mpesa = os.getenv("MPESA_USE_REAL", "false").lower() == "true"
 
-        if not all([consumer_key, consumer_secret, shortcode, passkey, callback_url]):
-            # Mock M-Pesa service for local development
-            mock_checkout_id = f"MOCK_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}"
-            return jsonify({
-                "message": "M-Pesa prompt sent to your phone (mock mode)",
-                "prompt_sent": True,
-                "checkout_request_id": mock_checkout_id,
-                "merchant_request_id": f"MOCK_MERCHANT_{datetime.datetime.now().strftime('%Y%m%d%H%M%S')}",
-                "mpesa_response": {
-                    "ResponseCode": "0",
-                    "ResponseDescription": "Success - Mock service for local development",
-                    "CheckoutRequestID": mock_checkout_id
-                }
-            })
+        if not use_real_mpesa or not all([consumer_key, consumer_secret, shortcode, passkey, callback_url]):
+            return build_mock_mpesa_response(account_reference)
 
         auth_response = requests.get(
             "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
             auth=HTTPBasicAuth(consumer_key, consumer_secret),
             timeout=20
         )
+        if auth_response.status_code == 403:
+            return build_mock_mpesa_response(account_reference)
+
         auth_response.raise_for_status()
         access_token = "Bearer " + auth_response.json()['access_token']
         

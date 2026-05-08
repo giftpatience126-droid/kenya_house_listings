@@ -80,18 +80,31 @@ function toFormData(payload) {
 }
 
 export function signInApi(payload) {
+  const email = payload.email?.trim().toLowerCase();
+
   return post(
     API_ENDPOINTS.signin,
     toFormData({
-      email: payload.email,
+      email,
       password: payload.password
     })
-  ).catch((error) => {
+  ).then((data) => {
+    if (data?.user) {
+      saveUser({
+        ...data.user,
+        email,
+        password: payload.password,
+        savedFromApi: true
+      });
+    }
+
+    return data;
+  }).catch((error) => {
     if (!isRecoverableApiError(error)) {
       throw error;
     }
 
-    const user = findUserByEmail(payload.email);
+    const user = findUserByEmail(email);
     if (!user) {
       throw error;
     }
@@ -111,12 +124,14 @@ export function signInApi(payload) {
 }
 
 export function signUpApi(payload) {
+  const email = payload.email?.trim().toLowerCase();
+
   return post(
     API_ENDPOINTS.signup,
     toFormData({
       username: payload.name,
       name: payload.name,
-      email: payload.email,
+      email,
       phone: payload.phone,
       password: payload.password,
       role: payload.role,
@@ -124,12 +139,22 @@ export function signUpApi(payload) {
       seller_admin_password: payload.sellerAdminPassword,
       seller_code: payload.sellerCode
     })
-  ).catch((error) => {
+  ).then((data) => {
+    saveUser({
+      ...payload,
+      ...(data?.user || {}),
+      email,
+      password: payload.password,
+      savedFromApi: true
+    });
+
+    return data;
+  }).catch((error) => {
     if (!isRecoverableApiError(error)) {
       throw error;
     }
 
-    if (findUserByEmail(payload.email)) {
+    if (findUserByEmail(email)) {
       const duplicateError = new Error("User with this email already exists on this device.");
       duplicateError.status = 400;
       throw duplicateError;
@@ -137,6 +162,7 @@ export function signUpApi(payload) {
 
     saveUser({
       ...payload,
+      email,
       createdAt: new Date().toISOString(),
       savedLocally: true
     });

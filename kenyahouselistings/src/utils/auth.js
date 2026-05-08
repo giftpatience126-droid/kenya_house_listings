@@ -33,14 +33,15 @@ export const getUsers = () => {
 };
 
 export const saveUser = (user) => {
-  const users = getUsers().filter(u => u.email !== user.email);
-  users.push(user);
+  const normalizedEmail = user.email?.trim().toLowerCase();
+  const users = getUsers().filter(u => u.email?.trim().toLowerCase() !== normalizedEmail);
+  users.push({ ...user, email: normalizedEmail });
   storage.set(USERS_KEY, users);
   emitUsersEvent();
 };
 
 export const findUserByEmail = (email) => 
-  getUsers().find(u => u.email?.toLowerCase() === email?.toLowerCase()) || null;
+  getUsers().find(u => u.email?.trim().toLowerCase() === email?.trim().toLowerCase()) || null;
 
 export const updateUser = (email, updates) => {
   const existing = findUserByEmail(email);
