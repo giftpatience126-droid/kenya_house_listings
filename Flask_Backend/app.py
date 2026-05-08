@@ -723,6 +723,14 @@ def build_mock_mpesa_response(account_reference):
     })
 
 
+def should_use_real_mpesa():
+    return os.getenv("MPESA_USE_REAL", "false").strip().lower() in ("1", "true", "yes")
+
+
+def should_fail_on_mpesa_error():
+    return os.getenv("MPESA_STRICT", "false").strip().lower() in ("1", "true", "yes")
+
+
 @app.route('/api/mpesa_payment', methods=['POST'])
 def mpesa_payment():
     try:
@@ -740,17 +748,23 @@ def mpesa_payment():
         shortcode = os.getenv("MPESA_SHORTCODE", "174379")
         passkey = os.getenv("MPESA_PASSKEY")
         callback_url = os.getenv("MPESA_CALLBACK_URL")
-        use_real_mpesa = os.getenv("MPESA_USE_REAL", "false").lower() == "true"
+        use_real_mpesa = should_use_real_mpesa()
 
         if not use_real_mpesa or not all([consumer_key, consumer_secret, shortcode, passkey, callback_url]):
             return build_mock_mpesa_response(account_reference)
 
-        auth_response = requests.get(
-            "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
-            auth=HTTPBasicAuth(consumer_key, consumer_secret),
-            timeout=20
-        )
-        if auth_response.status_code == 403:
+        try:
+            auth_response = requests.get(
+                "https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials",
+                auth=HTTPBasicAuth(consumer_key, consumer_secret),
+                timeout=20
+            )
+        except requests.RequestException:
+            if not should_fail_on_mpesa_error():
+                return build_mock_mpesa_response(account_reference)
+            raise
+
+        if not auth_response.ok and not should_fail_on_mpesa_error():
             return build_mock_mpesa_response(account_reference)
 
         auth_response.raise_for_status()
@@ -774,14 +788,23 @@ def mpesa_payment():
             "TransactionDesc": transaction_desc
         }
         
-        response = requests.post(
-            "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
-            json=payload,
-            headers={"Authorization": access_token, "Content-Type": "application/json"},
-            timeout=20
-        )
+        try:
+            response = requests.post(
+                "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest",
+                json=payload,
+                headers={"Authorization": access_token, "Content-Type": "application/json"},
+                timeout=20
+            )
+        except requests.RequestException:
+            if not should_fail_on_mpesa_error():
+                return build_mock_mpesa_response(account_reference)
+            raise
+
         response_data = response.json()
         if not response.ok or str(response_data.get("ResponseCode")) != "0":
+            if not should_fail_on_mpesa_error():
+                return build_mock_mpesa_response(account_reference)
+
             return jsonify({
                 "error": response_data.get("errorMessage") or response_data.get("ResponseDescription") or "M-Pesa prompt was not accepted.",
                 "prompt_sent": False,
